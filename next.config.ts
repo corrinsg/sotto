@@ -1,18 +1,8 @@
 import type { NextConfig } from "next";
 
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "worker-src 'self' blob:",
-  "frame-ancestors 'none'",
-  "form-action 'none'",
-  "base-uri 'self'",
-  "object-src 'none'",
-].join("; ");
+// Content-Security-Policy is set in proxy.ts with a per-request nonce
+// so that 'unsafe-inline' can be dropped from script-src. Other security
+// headers are static and live here because they don't need a nonce.
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -22,7 +12,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: CSP },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "no-referrer" },
           {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,11 +19,16 @@ export const metadata: Metadata = {
     "Analyze your spending without uploading anything. Your PDF never leaves your browser.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Reading headers() forces dynamic rendering so Next.js re-runs SSR
+  // per request. This lets the framework pick up the x-nonce header set
+  // by proxy.ts and attach it to every inline hydration script.
+  await headers();
+
   return (
     <html
       lang="en"
