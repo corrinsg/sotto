@@ -151,7 +151,6 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "CLAUDE.AI", category: "Subscriptions" },
   { match: "AWS EMEA", category: "Subscriptions" },
   { match: "DOCHUB", category: "Subscriptions" },
-  { match: "PURE GYM", category: "Subscriptions" },
   { match: "WEWORK", category: "Subscriptions" },
 
   // Shopping
@@ -186,15 +185,17 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "APPLIANCE FIX", category: "Home" },
 
   // Health
-  { match: "FINCHLEY DENTAL", category: "Health" },
-  { match: "EAR WAX", category: "Health" },
-  { match: "BUPA", category: "Health", appliesTo: "credit" },
-  { match: "SHEMESH", category: "Health" },
+  { match: "FINCHLEY DENTAL", category: "Health & Fitness" },
+  { match: "EAR WAX", category: "Health & Fitness" },
+  { match: "BUPA", category: "Health & Fitness", appliesTo: "credit" },
+  { match: "SHEMESH", category: "Health & Fitness" },
+  { match: "PURE GYM", category: "Health & Fitness" },
+  { match: "PUREGYM", category: "Health & Fitness" },
   // Keyword fallbacks for pharmacies — higher priority so they beat
   // retail rules like BOOTS when the merchant name includes "pharmacy".
-  { match: "PHARMACY", category: "Health", appliesTo: "debit", priority: 2 },
-  { match: "PHARMA", category: "Health", appliesTo: "debit", priority: 2 },
-  { match: "CHEMIST", category: "Health", appliesTo: "debit", priority: 2 },
+  { match: "PHARMACY", category: "Health & Fitness", appliesTo: "debit", priority: 2 },
+  { match: "PHARMA", category: "Health & Fitness", appliesTo: "debit", priority: 2 },
+  { match: "CHEMIST", category: "Health & Fitness", appliesTo: "debit", priority: 2 },
 
   // Pet — food, grooming, vet, boarding
   { match: "PETS AT HOME", category: "Pet" },

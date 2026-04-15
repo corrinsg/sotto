@@ -12,6 +12,12 @@ import type {
   Transaction,
 } from "./types";
 
+// Despite the file name this parser is now generic across UK banks with
+// text-based PDF statements. It detects column layout dynamically from
+// a header-keyword dictionary, so it handles variations in column order,
+// labels, and date formats. Originally written against HSBC and still
+// covers that format as a special case.
+
 interface Word {
   text: string;
   x0: number;
@@ -25,31 +31,217 @@ interface ColumnLayout {
   paidInRight: number;
   balanceRight: number;
   detailsX: number;
+  typeX0: number | null;
+  typeX1: number | null;
   boundaryOutIn: number;
   boundaryInBal: number;
   headerY: number | null;
+  dateHasYear: boolean;
 }
 
-const DATE_RE =
-  /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}$/;
+const DATE_PATTERNS: RegExp[] = [
+  // DD MMM YY or DD MMM YYYY  (HSBC "04 May 23", Lloyds "04 May 2023")
+  /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2,4}$/i,
+  // DD/MM/YY(YY)  (Santander, many others)
+  /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,
+  // DD-MM-YY(YY)
+  /^\d{1,2}-\d{1,2}-\d{2,4}$/,
+  // DD.MM.YY(YY)
+  /^\d{1,2}\.\d{1,2}\.\d{2,4}$/,
+  // ISO YYYY-MM-DD
+  /^\d{4}-\d{1,2}-\d{1,2}$/,
+];
+
 const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
+
+// Payment type prefix codes commonly embedded at the start of the details
+// string (HSBC convention). Banks with a dedicated Type column are handled
+// separately via column detection.
 const PAYMENT_TYPE_RE =
-  /^(VIS|BP|CR|DD|CHQ|SO|TFR|\)\)\)|FPI|FPO|BGC|ATM)\s*/;
+  /^(VIS|BP|CR|DR|DD|CHQ|SO|TFR|\)\)\)|FPI|FPO|BGC|ATM|CPT|DEB|POS|SAL|SBT|SPB)\s*/;
+
+// Single-word type codes that might appear in a separate Type column.
+const TYPE_CODE_RE = /^(VIS|BP|CR|DR|DD|CHQ|SO|TFR|FPI|FPO|BGC|ATM|CPT|DEB|POS|SAL|SBT|SPB)$/;
 
 const MONTH_TO_NUMBER: Record<string, string> = {
-  Jan: "01",
-  Feb: "02",
-  Mar: "03",
-  Apr: "04",
-  May: "05",
-  Jun: "06",
-  Jul: "07",
-  Aug: "08",
-  Sep: "09",
-  Oct: "10",
-  Nov: "11",
-  Dec: "12",
+  jan: "01",
+  feb: "02",
+  mar: "03",
+  apr: "04",
+  may: "05",
+  jun: "06",
+  jul: "07",
+  aug: "08",
+  sep: "09",
+  oct: "10",
+  nov: "11",
+  dec: "12",
 };
+
+// Header keyword dictionary. Phrases listed most-specific first so that
+// "paid in" is tried before a fallback match on "in" alone.
+const HEADER_KEYWORDS: Record<
+  "date" | "description" | "type" | "debit" | "credit" | "balance",
+  string[][]
+> = {
+  date: [["date"], ["transaction", "date"], ["posting", "date"]],
+  description: [
+    ["description"],
+    ["details"],
+    ["transaction", "details"],
+    ["reference"],
+    ["narrative"],
+    ["particulars"],
+  ],
+  type: [["type"], ["transaction", "type"], ["payment", "type"]],
+  debit: [
+    ["paid", "out"],
+    ["money", "out"],
+    ["withdrawal"],
+    ["withdrawals"],
+    ["debit"],
+    ["out", "(£)"],
+    ["out"],
+  ],
+  credit: [
+    ["paid", "in"],
+    ["money", "in"],
+    ["deposit"],
+    ["deposits"],
+    ["credit"],
+    ["in", "(£)"],
+    ["in"],
+  ],
+  balance: [
+    ["running", "balance"],
+    ["account", "balance"],
+    ["balance"],
+  ],
+};
+
+function findPhraseInLine(
+  line: Word[],
+  phrase: string[],
+): { firstIdx: number; lastIdx: number } | null {
+  if (phrase.length === 0 || line.length < phrase.length) return null;
+  outer: for (let i = 0; i <= line.length - phrase.length; i++) {
+    for (let j = 0; j < phrase.length; j++) {
+      if (line[i + j].text.toLowerCase() !== phrase[j]) {
+        continue outer;
+      }
+    }
+    return { firstIdx: i, lastIdx: i + phrase.length - 1 };
+  }
+  return null;
+}
+
+interface DetectedCols {
+  date?: { x0: number; x1: number };
+  description?: { x0: number; x1: number };
+  type?: { x0: number; x1: number };
+  debit?: { x0: number; x1: number };
+  credit?: { x0: number; x1: number };
+  balance?: { x0: number; x1: number };
+}
+
+function detectColsInLine(line: Word[]): DetectedCols {
+  const detected: DetectedCols = {};
+  const consumed = new Set<number>();
+  const categories = ["debit", "credit", "balance", "description", "type", "date"] as const;
+  for (const category of categories) {
+    for (const phrase of HEADER_KEYWORDS[category]) {
+      const match = findPhraseInLine(line, phrase);
+      if (!match) continue;
+      if ([...Array(match.lastIdx - match.firstIdx + 1).keys()].some(
+        (k) => consumed.has(match.firstIdx + k),
+      )) {
+        continue;
+      }
+      detected[category] = {
+        x0: line[match.firstIdx].x0,
+        x1: line[match.lastIdx].x1,
+      };
+      for (let k = match.firstIdx; k <= match.lastIdx; k++) consumed.add(k);
+      break;
+    }
+  }
+  return detected;
+}
+
+function scoreHeader(cols: DetectedCols): number {
+  let s = 0;
+  if (cols.debit) s += 2;
+  if (cols.credit) s += 2;
+  if (cols.balance) s += 2;
+  if (cols.date) s += 1;
+  if (cols.description) s += 1;
+  if (cols.type) s += 1;
+  return s;
+}
+
+function detectColumns(lines: Word[][]): ColumnLayout {
+  let bestScore = 0;
+  let bestCols: DetectedCols = {};
+  let bestLine: Word[] | null = null;
+
+  for (const line of lines) {
+    const cols = detectColsInLine(line);
+    const score = scoreHeader(cols);
+    if (score > bestScore) {
+      bestScore = score;
+      bestCols = cols;
+      bestLine = line;
+    }
+  }
+
+  // Fallback hardcoded defaults if we couldn't find a decent header.
+  // Keeps the legacy HSBC behaviour for any weird statement that doesn't
+  // expose an obvious table header in its text layer.
+  if (bestScore < 3 || !bestLine) {
+    const paidOutRight = 480;
+    const paidInRight = 620;
+    const balanceRight = 740;
+    return {
+      paidOutRight,
+      paidInRight,
+      balanceRight,
+      detailsX: 120,
+      typeX0: null,
+      typeX1: null,
+      boundaryOutIn: (paidOutRight + paidInRight) / 2,
+      boundaryInBal: (paidInRight + balanceRight) / 2,
+      headerY: null,
+      dateHasYear: true,
+    };
+  }
+
+  const paidOutRight = bestCols.debit?.x1 ?? 480;
+  const paidInRight =
+    bestCols.credit?.x1 ??
+    (bestCols.debit ? paidOutRight + 140 : 620);
+  const balanceRight = bestCols.balance?.x1 ?? paidInRight + 120;
+  const detailsX = bestCols.description?.x0 ?? 120;
+  const typeX0 = bestCols.type?.x0 ?? null;
+  const typeX1 = bestCols.type?.x1 ?? null;
+  const headerY = bestLine[bestLine.length - 1].top;
+
+  return {
+    paidOutRight,
+    paidInRight,
+    balanceRight,
+    detailsX,
+    typeX0,
+    typeX1,
+    boundaryOutIn: (paidOutRight + paidInRight) / 2,
+    boundaryInBal: (paidInRight + balanceRight) / 2,
+    headerY,
+    dateHasYear: true,
+  };
+}
+
+function looksLikeDate(s: string): boolean {
+  return DATE_PATTERNS.some((re) => re.test(s));
+}
 
 const MERGED_FOOTER_RE = /^BALANCECARRIEDFORWARD$/i;
 
@@ -67,6 +259,10 @@ function findFooterStart(words: Word[]): number {
     if (text === "Financial") {
       const next = words[i + 1]?.text;
       if (next === "Services") return i;
+    }
+    if (text === "Authorised" || text === "authorised") {
+      const next = words[i + 1]?.text?.toLowerCase();
+      if (next === "and" || next === "by") return i;
     }
   }
   return -1;
@@ -163,78 +359,6 @@ function groupIntoLines(words: Word[], yTolerance = 5): Word[][] {
   return lines;
 }
 
-function detectColumns(lines: Word[][]): ColumnLayout {
-  let headerLine: Word[] | null = null;
-  for (const line of lines) {
-    const text = line.map((w) => w.text).join(" ");
-    if (
-      text.includes("Paid out") ||
-      text.toLowerCase().includes("paid out")
-    ) {
-      headerLine = line;
-      break;
-    }
-  }
-
-  let paidOutRight: number;
-  let paidInRight: number;
-  let balanceRight: number;
-  const detailsX = 120;
-
-  if (!headerLine) {
-    paidOutRight = 480;
-    paidInRight = 620;
-    balanceRight = 740;
-    return {
-      paidOutRight,
-      paidInRight,
-      balanceRight,
-      detailsX,
-      boundaryOutIn: (paidOutRight + paidInRight) / 2,
-      boundaryInBal: (paidInRight + balanceRight) / 2,
-      headerY: null,
-    };
-  }
-
-  const paidWords = headerLine.filter(
-    (w) => w.text.toLowerCase() === "paid",
-  );
-  const outWords = headerLine.filter((w) => w.text.toLowerCase() === "out");
-  const inWords = headerLine.filter((w) => w.text.toLowerCase() === "in");
-  const balanceWords = headerLine.filter(
-    (w) => w.text.toLowerCase() === "balance",
-  );
-
-  if (outWords.length > 0 && inWords.length > 0) {
-    paidOutRight = outWords[0].x1;
-    paidInRight = inWords[0].x1;
-  } else if (paidWords.length >= 2) {
-    paidOutRight = paidWords[0].x1;
-    paidInRight = paidWords[1].x1;
-  } else if (paidWords.length === 1) {
-    paidOutRight = paidWords[0].x1;
-    paidInRight = paidOutRight + 140;
-  } else {
-    paidOutRight = 480;
-    paidInRight = 620;
-  }
-
-  balanceRight =
-    balanceWords.length > 0 ? balanceWords[0].x1 : paidInRight + 120;
-
-  const headerY = headerLine[headerLine.length - 1].top;
-
-  return {
-    paidOutRight,
-    paidInRight,
-    balanceRight,
-    detailsX,
-    boundaryOutIn: (paidOutRight + paidInRight) / 2,
-    boundaryInBal: (paidInRight + balanceRight) / 2,
-    headerY,
-  };
-}
-
 function stripFooterWords(line: Word[]): Word[] {
   const idx = findFooterStart(line);
   if (idx === -1) return line;
@@ -288,11 +412,23 @@ function parseDataLines(
   }
 
   function processLine(line: Word[]): void {
+    // Split the line into date-region words, type-column words, and
+    // other words based on the detected column x-positions.
+    const dateRegionRight = cols.detailsX - 20;
     const dateWordsInLine: Word[] = [];
+    const typeWordsInLine: Word[] = [];
     const otherWords: Word[] = [];
+
     for (const w of line) {
-      if (w.x0 < cols.detailsX - 20) {
+      const inTypeCol =
+        cols.typeX0 !== null &&
+        cols.typeX1 !== null &&
+        w.x0 >= cols.typeX0 - 5 &&
+        w.x1 <= cols.typeX1 + 10;
+      if (w.x0 < dateRegionRight) {
         dateWordsInLine.push(w);
+      } else if (inTypeCol && TYPE_CODE_RE.test(w.text)) {
+        typeWordsInLine.push(w);
       } else {
         otherWords.push(w);
       }
@@ -301,10 +437,16 @@ function parseDataLines(
     let hasDate = false;
     let dateStr = "";
     if (dateWordsInLine.length > 0) {
-      const potential = dateWordsInLine.map((w) => w.text).join(" ");
-      if (DATE_RE.test(potential)) {
+      const potential = dateWordsInLine
+        .map((w) => w.text)
+        .join(" ")
+        .trim();
+      if (looksLikeDate(potential)) {
         hasDate = true;
         dateStr = potential;
+      } else if (dateWordsInLine.length === 1 && looksLikeDate(dateWordsInLine[0].text)) {
+        hasDate = true;
+        dateStr = dateWordsInLine[0].text;
       }
     }
 
@@ -319,16 +461,20 @@ function parseDataLines(
     let paidInVal = "";
     let balanceVal = "";
 
+    // Assign each amount to the column whose right edge is closest.
+    // Using nearest-neighbour instead of a left-to-right boundary lets
+    // us handle banks that put credit before debit (Lloyds) or any
+    // other non-HSBC ordering.
     for (const w of wordsToCheck) {
       if (AMOUNT_RE.test(w.text)) {
         const right = w.x1;
-        if (right < cols.boundaryOutIn) {
-          paidOutVal = w.text;
-        } else if (right < cols.boundaryInBal) {
-          paidInVal = w.text;
-        } else {
-          balanceVal = w.text;
-        }
+        const dOut = Math.abs(right - cols.paidOutRight);
+        const dIn = Math.abs(right - cols.paidInRight);
+        const dBal = Math.abs(right - cols.balanceRight);
+        const min = Math.min(dOut, dIn, dBal);
+        if (min === dOut) paidOutVal = w.text;
+        else if (min === dIn) paidInVal = w.text;
+        else balanceVal = w.text;
       } else {
         detailWords.push(w.text);
       }
@@ -354,11 +500,18 @@ function parseDataLines(
       return;
     }
 
+    // Payment type: prefer the dedicated Type column when the header had
+    // one and we found a code in that column. Otherwise fall back to the
+    // embedded-prefix convention that HSBC uses.
     let paymentType = "";
-    const m = detailText.match(PAYMENT_TYPE_RE);
-    if (m) {
-      paymentType = m[1];
-      detailText = detailText.slice(m[0].length).trim();
+    if (typeWordsInLine.length > 0) {
+      paymentType = typeWordsInLine[0].text;
+    } else {
+      const m = detailText.match(PAYMENT_TYPE_RE);
+      if (m) {
+        paymentType = m[1];
+        detailText = detailText.slice(m[0].length).trim();
+      }
     }
 
     if (hasDate || paymentType) {
@@ -400,12 +553,37 @@ function forwardFillDates(txns: RawTransaction[]): void {
 }
 
 function toIsoDate(date: string): string {
-  const m = date.match(/^(\d{1,2})\s+(\w{3})\s+(\d{2})$/);
-  if (!m) return "";
-  const day = m[1].padStart(2, "0");
-  const month = MONTH_TO_NUMBER[m[2]] ?? "00";
-  const year = `20${m[3]}`;
-  return `${year}-${month}-${day}`;
+  const trimmed = date.trim();
+  if (!trimmed) return "";
+
+  // DD MMM YY / DD MMM YYYY
+  let m =
+    /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})$/i.exec(
+      trimmed,
+    );
+  if (m) {
+    const day = m[1].padStart(2, "0");
+    const month = MONTH_TO_NUMBER[m[2].toLowerCase()] ?? "00";
+    const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  // DD/MM/YY(YY) or DD-MM-YY(YY) or DD.MM.YY(YY)
+  m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(trimmed);
+  if (m) {
+    const day = m[1].padStart(2, "0");
+    const month = m[2].padStart(2, "0");
+    const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  // YYYY-MM-DD
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
+  if (m) {
+    return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  }
+
+  return "";
 }
 
 function parseAmount(value: string): number {
@@ -492,7 +670,7 @@ async function parsePage(
   parseDataLines(dataLines, cols, state);
 }
 
-export async function parseHsbcStatement(
+export async function parseStatementPdf(
   input: ArrayBuffer | Uint8Array | File | Blob,
   opts?: ParseOptions,
 ): Promise<ParsedStatement> {
@@ -538,6 +716,10 @@ export async function parseHsbcStatement(
   return {
     transactions,
     warnings,
-    stats: { pages, rawRows: state.transactions.length },
+    stats: { pages, rawRows: state.transactions.length, source: "pdf" },
   };
 }
+
+// Backwards-compatible alias. The parser is no longer HSBC-specific but
+// existing callers (and the test suite) import this name.
+export const parseHsbcStatement = parseStatementPdf;

@@ -11,7 +11,7 @@ export const CATEGORIES = [
   "Pet",
   "Shopping",
   "Entertainment",
-  "Health",
+  "Health & Fitness",
   "Travel",
   "Subscriptions",
   "Cash",

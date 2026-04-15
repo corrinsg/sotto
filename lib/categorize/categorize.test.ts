@@ -61,7 +61,7 @@ describe("categorize — unit tests", () => {
     ["ITSU EAGLE HOUSE", "Dining Out"],
     ["PRET A MANGER LONDON", "Dining Out"],
     ["COSTA COFFEE LONDON", "Dining Out"],
-    ["FINCHLEY DENTAL LO LONDON", "Health"],
+    ["FINCHLEY DENTAL LO LONDON", "Health & Fitness"],
     ["PETS AT HOME LTD GREATER LONDO", "Pet"],
     ["HALO DOGS LTD LONDON", "Pet"],
     ["SOHO THEATRE London", "Entertainment"],
@@ -94,7 +94,7 @@ describe("categorize — unit tests", () => {
   });
 
   test("BUPA only matches credit (refunds), never debit", () => {
-    expect(categorize(mockTx("BUPA PAYMENTS", "credit")).category).toBe("Health");
+    expect(categorize(mockTx("BUPA PAYMENTS", "credit")).category).toBe("Health & Fitness");
     expect(categorize(mockTx("BUPA PAYMENTS", "debit")).category).toBe(null);
   });
 

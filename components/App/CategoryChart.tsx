@@ -17,7 +17,7 @@ const COLORS: Record<string, string> = {
   Pet: "#b45309",
   Shopping: "#f43f5e",
   Entertainment: "#8b5cf6",
-  Health: "#14b8a6",
+  "Health & Fitness": "#14b8a6",
   Travel: "#3b82f6",
   Subscriptions: "#a855f7",
   Cash: "#78716c",
