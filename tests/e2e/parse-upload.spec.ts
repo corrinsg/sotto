@@ -22,7 +22,7 @@ test.describe("privacy — no network traffic during parse", () => {
       externalRequests.push(url);
     });
 
-    await page.goto("/app");
+    await page.goto("/analyse");
     await expect(page.getByText("Drop your bank statements here")).toBeVisible();
 
     const input = page.locator('input[type="file"]');
@@ -42,7 +42,7 @@ test.describe("privacy — no network traffic during parse", () => {
   });
 
   test("offline mode still parses the PDF", async ({ context, page }) => {
-    await page.goto("/app");
+    await page.goto("/analyse");
     await expect(page.getByText("Drop your bank statements here")).toBeVisible();
 
     await context.setOffline(true);
@@ -56,7 +56,7 @@ test.describe("privacy — no network traffic during parse", () => {
   });
 
   test("privacy-relevant response headers are set", async ({ page }) => {
-    const response = await page.goto("/app");
+    const response = await page.goto("/analyse");
     expect(response).not.toBeNull();
     const headers = response!.headers();
     expect(headers["content-security-policy"]).toContain("connect-src 'self'");

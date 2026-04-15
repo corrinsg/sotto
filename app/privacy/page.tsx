@@ -74,7 +74,7 @@ export default function PrivacyPage() {
               <li>
                 Head to{" "}
                 <Link
-                  href="/app"
+                  href="/analyse"
                   className="font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
                   the app
