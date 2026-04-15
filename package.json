@@ -42,7 +42,7 @@
     "jsdom": "^29.0.2",
     "pdfkit": "^0.18.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^6",
     "vitest": "^2.1.9"
   }
 }
