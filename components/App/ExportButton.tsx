@@ -35,7 +35,7 @@ export function ExportButton() {
         escapeCsv(tx.details),
         tx.amount.toFixed(2),
         tx.kind,
-        escapeCsv(category ?? "Uncategorized"),
+        escapeCsv(category ?? "Uncategorised"),
       ].join(","),
     );
     const csv = [header, ...rows].join("\n");
@@ -43,7 +43,7 @@ export function ExportButton() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "sotto-categorized.csv";
+    a.download = "sotto-categorised.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -52,9 +52,19 @@ export function ExportButton() {
     <button
       type="button"
       onClick={handleExport}
-      className="rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+      className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-none dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
     >
-      Export categorized CSV
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="h-4 w-4"
+        aria-hidden
+      >
+        <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z" />
+        <path d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z" />
+      </svg>
+      Export CSV
     </button>
   );
 }

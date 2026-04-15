@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sotto — Private spend analyzer",
+  title: "Sotto — Private spend analyser",
   description:
-    "Analyze your spending without uploading anything. Your PDF never leaves your browser.",
+    "Analyse your spending without uploading anything. Your statement never leaves your browser.",
 };
 
 export default async function RootLayout({
@@ -34,7 +34,7 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-950">
+      <body className="relative min-h-full flex flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
         {children}
       </body>
     </html>

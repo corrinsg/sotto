@@ -1,76 +1,26 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { useAppStore } from "@/lib/state/appStore";
-import { parseHsbcStatement } from "@/lib/parser/hsbcParser";
-import { parseCsvStatement } from "@/lib/parser/csvParser";
-import { configurePdfjsWorker } from "@/lib/parser/pdfjsLoader";
-import type { ParsedStatement } from "@/lib/parser/types";
+import { useRef, useState } from "react";
+import { useStatementParser } from "@/lib/state/useStatementParser";
 import { cn } from "@/lib/utils";
 
 export function FileDropzone() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const startParse = useAppStore((s) => s.startParse);
-  const setProgress = useAppStore((s) => s.setProgress);
-  const setParsed = useAppStore((s) => s.setParsed);
-  const setError = useAppStore((s) => s.setError);
-
-  const handleFile = useCallback(
-    async (file: File) => {
-      const name = file.name.toLowerCase();
-      const isPdf = name.endsWith(".pdf");
-      const isCsv = name.endsWith(".csv");
-      if (!isPdf && !isCsv) {
-        setError(
-          "That doesn't look like a PDF or CSV. Please upload your bank statement as PDF or CSV.",
-        );
-        return;
-      }
-      startParse();
-      try {
-        let statement: ParsedStatement;
-        if (isPdf) {
-          configurePdfjsWorker();
-          const buffer = await file.arrayBuffer();
-          statement = await parseHsbcStatement(buffer, {
-            onProgress: (pct) => setProgress(pct),
-          });
-        } else {
-          const text = await file.text();
-          statement = await parseCsvStatement(text, {
-            onProgress: (pct) => setProgress(pct),
-          });
-        }
-        if (statement.transactions.length === 0) {
-          setError(
-            "We couldn't find any transactions. Your statement format may not be supported yet. Make sure it's a text-based (not scanned) PDF or a CSV with recognizable columns.",
-          );
-          return;
-        }
-        setParsed(statement);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error.";
-        setError(
-          isCsv
-            ? `Couldn't parse this CSV. ${message}`
-            : `Couldn't parse this PDF. It may be password-protected, scanned, or in an unexpected layout. (${message})`,
-        );
-      }
-    },
-    [startParse, setProgress, setParsed, setError],
-  );
+  const parseFiles = useStatementParser();
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (e.target.files && e.target.files.length > 0) {
+      parseFiles(e.target.files);
+    }
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      parseFiles(e.dataTransfer.files);
+    }
   };
 
   return (
@@ -82,10 +32,10 @@ export function FileDropzone() {
       onDragLeave={() => setDragActive(false)}
       onDrop={onDrop}
       className={cn(
-        "group relative flex min-h-64 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed bg-white px-8 py-12 text-center transition",
+        "group relative flex min-h-72 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed bg-white px-8 py-12 text-center shadow-sm transition dark:bg-zinc-900 dark:shadow-none",
         dragActive
-          ? "border-zinc-900 bg-zinc-50"
-          : "border-zinc-300 hover:border-zinc-500",
+          ? "border-emerald-500 bg-emerald-50/40 shadow-md dark:bg-emerald-950/30"
+          : "border-zinc-200 hover:border-emerald-300 hover:bg-emerald-50/20 dark:border-zinc-800 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/20",
       )}
       onClick={() => inputRef.current?.click()}
     >
@@ -93,10 +43,16 @@ export function FileDropzone() {
         ref={inputRef}
         type="file"
         accept="application/pdf,text/csv,.pdf,.csv"
+        multiple
         className="hidden"
         onChange={onInputChange}
       />
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white">
+      <div
+        className={cn(
+          "flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 transition dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-900",
+          dragActive && "scale-105 bg-emerald-100 dark:bg-emerald-900",
+        )}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -105,7 +61,7 @@ export function FileDropzone() {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="h-6 w-6"
+          className="h-7 w-7"
         >
           <path d="M12 13v8" />
           <path d="m8 17 4-4 4 4" />
@@ -113,11 +69,12 @@ export function FileDropzone() {
         </svg>
       </div>
       <div>
-        <p className="text-base font-medium text-zinc-900">
-          Drop your bank statement here
+        <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          Drop your bank statements here
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          PDF or CSV · click to browse · never leaves your browser
+        <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+          One or more PDFs or CSVs · click to browse · never leaves your
+          browser
         </p>
       </div>
     </div>

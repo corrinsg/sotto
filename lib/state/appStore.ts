@@ -8,71 +8,166 @@ import { STARTER_RULES } from "../categorize/rules";
 
 export type Phase = "idle" | "parsing" | "parsed" | "error";
 
+export interface LoadedFile {
+  name: string;
+  source: "pdf" | "csv";
+  transactionCount: number; // rows actually kept (after dedupe)
+  duplicatesSkipped: number; // rows from this file that were dupes of earlier rows
+  pages: number;
+  rawRows: number;
+}
+
 interface AppState {
   phase: Phase;
-  parseProgress: number;
+  // Parsing progress
+  totalFiles: number;
+  currentFileIndex: number; // 1-based
+  currentFileName: string | null;
+  perFileProgress: number; // 0-100 for the current file
+
   error: string | null;
   transactions: Transaction[];
-  stats: ParsedStatement["stats"] | null;
+  loadedFiles: LoadedFile[];
+  duplicatesSkipped: number; // running total across the current session
   categoryOverrides: Record<string, Category>;
   sessionRules: MerchantRule[];
 }
 
 interface AppActions {
-  startParse: () => void;
-  setProgress: (pct: number) => void;
-  setParsed: (statement: ParsedStatement) => void;
+  beginBatch: (totalFiles: number, keepExisting: boolean) => void;
+  setCurrentFile: (index: number, name: string) => void;
+  setFileProgress: (pct: number) => void;
+  appendStatement: (statement: ParsedStatement, filename: string) => void;
+  finishBatch: () => void;
   setError: (msg: string) => void;
   assignCategory: (txId: string, cat: Category) => void;
   addSessionRule: (rule: MerchantRule) => void;
   reset: () => void;
 }
 
-export const useAppStore = create<AppState & AppActions>((set) => ({
+const INITIAL: AppState = {
   phase: "idle",
-  parseProgress: 0,
+  totalFiles: 0,
+  currentFileIndex: 0,
+  currentFileName: null,
+  perFileProgress: 0,
   error: null,
   transactions: [],
-  stats: null,
+  loadedFiles: [],
+  duplicatesSkipped: 0,
   categoryOverrides: {},
   sessionRules: [],
+};
 
-  startParse: () =>
-    set({
+function normaliseForDedupe(details: string): string {
+  return details.toUpperCase().replace(/\s+/g, " ").trim();
+}
+
+export function dedupeKey(tx: Transaction): string {
+  return [
+    tx.isoDate,
+    tx.paymentType,
+    normaliseForDedupe(tx.details),
+    tx.amount.toFixed(2),
+  ].join("|");
+}
+
+export const useAppStore = create<AppState & AppActions>((set) => ({
+  ...INITIAL,
+
+  beginBatch: (totalFiles, keepExisting) =>
+    set((state) => ({
       phase: "parsing",
-      parseProgress: 0,
+      totalFiles,
+      currentFileIndex: 0,
+      currentFileName: null,
+      perFileProgress: 0,
       error: null,
-      transactions: [],
-      stats: null,
-      categoryOverrides: {},
-      sessionRules: [],
+      transactions: keepExisting ? state.transactions : [],
+      loadedFiles: keepExisting ? state.loadedFiles : [],
+      duplicatesSkipped: keepExisting ? state.duplicatesSkipped : 0,
+      categoryOverrides: keepExisting ? state.categoryOverrides : {},
+      sessionRules: keepExisting ? state.sessionRules : [],
+    })),
+
+  setCurrentFile: (index, name) =>
+    set({
+      currentFileIndex: index,
+      currentFileName: name,
+      perFileProgress: 0,
     }),
-  setProgress: (pct) => set({ parseProgress: pct }),
-  setParsed: (statement) =>
+
+  setFileProgress: (pct) => set({ perFileProgress: pct }),
+
+  appendStatement: (statement, filename) =>
+    set((state) => {
+      // Dedupe across files only. Keys collected from rows already in
+      // state before this file was loaded. We deliberately don't add to
+      // `seenFromPrior` as we iterate the current file, so two genuinely
+      // identical rows within a single statement (e.g. two £5 coffees
+      // at the same cafe on the same day) are both kept.
+      const seenFromPrior = new Set<string>();
+      for (const tx of state.transactions) {
+        // BALANCE BROUGHT FORWARD rows deliberately bypass dedupe —
+        // each statement has its own opening balance on its own date.
+        if (tx.details === "BALANCE BROUGHT FORWARD") continue;
+        seenFromPrior.add(dedupeKey(tx));
+      }
+      const fresh: Transaction[] = [];
+      let skipped = 0;
+      for (const tx of statement.transactions) {
+        if (tx.details === "BALANCE BROUGHT FORWARD") {
+          fresh.push(tx);
+          continue;
+        }
+        if (seenFromPrior.has(dedupeKey(tx))) {
+          skipped++;
+          continue;
+        }
+        fresh.push(tx);
+      }
+
+      const source = statement.stats.source ?? "pdf";
+      const loaded: LoadedFile = {
+        name: filename,
+        source,
+        transactionCount: fresh.length,
+        duplicatesSkipped: skipped,
+        pages: statement.stats.pages,
+        rawRows: statement.stats.rawRows,
+      };
+      return {
+        transactions: [...state.transactions, ...fresh],
+        loadedFiles: [...state.loadedFiles, loaded],
+        duplicatesSkipped: state.duplicatesSkipped + skipped,
+      };
+    }),
+
+  finishBatch: () =>
     set({
       phase: "parsed",
-      parseProgress: 100,
-      transactions: statement.transactions,
-      stats: statement.stats,
+      perFileProgress: 100,
     }),
+
   setError: (msg) => set({ phase: "error", error: msg }),
+
   assignCategory: (txId, cat) =>
     set((state) => ({
       categoryOverrides: { ...state.categoryOverrides, [txId]: cat },
     })),
+
   addSessionRule: (rule) =>
     set((state) => ({ sessionRules: [...state.sessionRules, rule] })),
-  reset: () =>
-    set({
-      phase: "idle",
-      parseProgress: 0,
-      error: null,
-      transactions: [],
-      stats: null,
-      categoryOverrides: {},
-      sessionRules: [],
-    }),
+
+  reset: () => set({ ...INITIAL }),
 }));
+
+export function selectOverallProgress(state: AppState): number {
+  if (state.totalFiles === 0) return 0;
+  const completed = Math.max(0, state.currentFileIndex - 1);
+  const current = Math.max(0, Math.min(100, state.perFileProgress)) / 100;
+  return Math.round(((completed + current) / state.totalFiles) * 100);
+}
 
 export interface CategorizedTransaction {
   tx: Transaction;

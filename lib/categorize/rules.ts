@@ -12,15 +12,53 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "NAZAR FOOD", category: "Groceries" },
   { match: "MAJESTIC WINE", category: "Groceries" },
 
-  // Dining Out
+  // Dining Out — chains
   { match: "ITSU", category: "Dining Out" },
   { match: "PRET A MANGER", category: "Dining Out" },
   { match: "COSTA COFFEE", category: "Dining Out" },
   { match: "COSTA COLLECT", category: "Dining Out" },
+  { match: "CAFFE NERO", category: "Dining Out" },
+  { match: "CAFFENERO", category: "Dining Out" },
+  { match: "STARBUCKS", category: "Dining Out" },
+  { match: "GREGGS", category: "Dining Out" },
+  { match: "GAIL'S", category: "Dining Out" },
+  { match: "GAILS BAKERY", category: "Dining Out" },
   { match: "MCDONALDS", category: "Dining Out" },
-  { match: "DELIVEROO", category: "Dining Out" },
-  { match: "WETHERSPOON", category: "Dining Out" },
+  { match: "KFC", category: "Dining Out" },
+  { match: "SUBWAY", category: "Dining Out" },
+  { match: "BURGER KING", category: "Dining Out" },
   { match: "BURGER KIN", category: "Dining Out" },
+  { match: "FIVE GUYS", category: "Dining Out" },
+  { match: "FIVEGUYS", category: "Dining Out" },
+  { match: "HONEST BURGERS", category: "Dining Out" },
+  { match: "BYRON", category: "Dining Out" },
+  { match: "GBK", category: "Dining Out" },
+  { match: "GOURMET BURGER", category: "Dining Out" },
+  { match: "NANDOS", category: "Dining Out" },
+  { match: "NANDO'S", category: "Dining Out" },
+  { match: "WAGAMAMA", category: "Dining Out" },
+  { match: "YO SUSHI", category: "Dining Out" },
+  { match: "YO! SUSHI", category: "Dining Out" },
+  { match: "DISHOOM", category: "Dining Out" },
+  { match: "PIZZA EXPRESS", category: "Dining Out" },
+  { match: "PIZZAEXPRESS", category: "Dining Out" },
+  { match: "FRANCO MANCA", category: "Dining Out" },
+  { match: "ZIZZI", category: "Dining Out" },
+  { match: "ASK ITALIAN", category: "Dining Out" },
+  { match: "PIZZAHUT", category: "Dining Out" },
+  { match: "PIZZA HUT", category: "Dining Out" },
+  { match: "DOMINOS", category: "Dining Out" },
+  { match: "DOMINO'S", category: "Dining Out" },
+  { match: "PAPA JOHN", category: "Dining Out" },
+  { match: "LEON RESTAURANT", category: "Dining Out" },
+  { match: "WETHERSPOON", category: "Dining Out" },
+  { match: "DELIVEROO", category: "Dining Out" },
+  { match: "JUST EAT", category: "Dining Out" },
+  { match: "JUSTEAT", category: "Dining Out" },
+  { match: "UBER EATS", category: "Dining Out" },
+  { match: "UBEREATS", category: "Dining Out" },
+
+  // Dining Out — specific merchants from sample data
   { match: "RED THAI", category: "Dining Out" },
   { match: "TARO JAPANESE", category: "Dining Out" },
   { match: "SUSHI", category: "Dining Out" },
@@ -43,8 +81,16 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "DELIGHT BISTRO", category: "Dining Out" },
   { match: "RED LION", category: "Dining Out" },
   { match: "TIFFIN TIN", category: "Dining Out" },
-  { match: "PIZZAHUT", category: "Dining Out" },
-  { match: "PIZZA HUT", category: "Dining Out" },
+
+  // Dining Out — keyword fallbacks for the long tail
+  // Low priority so specific chain/merchant rules still win when present
+  { match: "RESTAURANT", category: "Dining Out", appliesTo: "debit" },
+  { match: "BISTRO", category: "Dining Out", appliesTo: "debit" },
+  { match: "PIZZERIA", category: "Dining Out", appliesTo: "debit" },
+  { match: "GASTROPUB", category: "Dining Out", appliesTo: "debit" },
+  { match: "CAFE ", category: "Dining Out", appliesTo: "debit" },
+  { match: " CAFE", category: "Dining Out", appliesTo: "debit" },
+  { match: "TRATTORIA", category: "Dining Out", appliesTo: "debit" },
 
   // Transport — public transit, taxis, ride-hailing
   { match: "TFL TRAVEL", category: "Transport" },
@@ -132,7 +178,7 @@ export const STARTER_RULES: MerchantRule[] = [
   // Kids — after-school, childcare, schools, kids' activities
   { match: "KORU KIDS", category: "Kids" },
   { match: "ISRAELI SC", category: "Kids" },
-  { match: "MOSS HALL INFANT", category: "Kids" },
+  { match: "MOSS HALL", category: "Kids" },
   { match: "SOTOPA", category: "Kids" },
 
   // Home — cleaner, gardener, handyperson, appliance repair
@@ -144,6 +190,11 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "EAR WAX", category: "Health" },
   { match: "BUPA", category: "Health", appliesTo: "credit" },
   { match: "SHEMESH", category: "Health" },
+  // Keyword fallbacks for pharmacies — higher priority so they beat
+  // retail rules like BOOTS when the merchant name includes "pharmacy".
+  { match: "PHARMACY", category: "Health", appliesTo: "debit", priority: 2 },
+  { match: "PHARMA", category: "Health", appliesTo: "debit", priority: 2 },
+  { match: "CHEMIST", category: "Health", appliesTo: "debit", priority: 2 },
 
   // Pet — food, grooming, vet, boarding
   { match: "PETS AT HOME", category: "Pet" },

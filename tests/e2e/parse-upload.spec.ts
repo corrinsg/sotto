@@ -23,7 +23,7 @@ test.describe("privacy — no network traffic during parse", () => {
     });
 
     await page.goto("/app");
-    await expect(page.getByText("Drop your bank statement here")).toBeVisible();
+    await expect(page.getByText("Drop your bank statements here")).toBeVisible();
 
     const input = page.locator('input[type="file"]');
     await input.setInputFiles(FIXTURE_PDF);
@@ -43,7 +43,7 @@ test.describe("privacy — no network traffic during parse", () => {
 
   test("offline mode still parses the PDF", async ({ context, page }) => {
     await page.goto("/app");
-    await expect(page.getByText("Drop your bank statement here")).toBeVisible();
+    await expect(page.getByText("Drop your bank statements here")).toBeVisible();
 
     await context.setOffline(true);
 

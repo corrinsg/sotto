@@ -56,11 +56,26 @@ export function UncategorizedPanel() {
 
   if (sorted.length === 0) {
     return (
-      <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
-        <div className="text-sm font-medium text-green-900">
-          All transactions categorized.
+      <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/60 p-6 text-center shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:shadow-none">
+        <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-5 w-5"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+              clipRule="evenodd"
+            />
+          </svg>
         </div>
-        <div className="mt-1 text-xs text-green-700">
+        <div className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+          All transactions categorised.
+        </div>
+        <div className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
           Your spend breakdown is complete.
         </div>
       </div>
@@ -68,20 +83,20 @@ export function UncategorizedPanel() {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-zinc-200/60 bg-white p-6 shadow-sm dark:border-zinc-800/60 dark:bg-zinc-900 dark:shadow-none">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-900">
-            Uncategorized ({sorted.length})
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            Uncategorised ({sorted.length})
           </h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Tag the ones that matter — sorted by amount.
           </p>
         </div>
         <button
           type="button"
           onClick={handleSkipAll}
-          className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
+          className="shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-none dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
         >
           Skip all as Other
         </button>
@@ -93,26 +108,30 @@ export function UncategorizedPanel() {
           return (
             <div
               key={tx.id}
-              className="rounded-xl border border-zinc-200 bg-zinc-50 p-3"
+              className="rounded-xl border border-zinc-200/60 bg-zinc-50/60 p-3.5 transition hover:border-zinc-300 hover:bg-white dark:border-zinc-800/60 dark:bg-zinc-900/60 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
             >
               <div className="flex items-baseline justify-between gap-2">
                 <div
-                  className={`text-sm font-semibold ${isDebit ? "text-zinc-900" : "text-emerald-700"}`}
+                  className={`text-sm font-semibold tabular-nums ${
+                    isDebit
+                      ? "text-zinc-900 dark:text-zinc-100"
+                      : "text-emerald-700 dark:text-emerald-400"
+                  }`}
                 >
                   {isDebit ? "−" : "+"}
                   {formatGBP(tx.amount)}
                 </div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">
                   {tx.date} · {tx.paymentType || "—"}
                 </div>
               </div>
-              <div className="mt-1 line-clamp-2 text-sm text-zinc-700">
+              <div className="mt-1 line-clamp-2 text-sm text-zinc-700 dark:text-zinc-300">
                 {tx.details}
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 <select
                   defaultValue=""
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-zinc-900 focus:outline-none"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:shadow-none dark:focus:border-emerald-500"
                   onChange={(e) => {
                     if (e.target.value) {
                       handleAssign(
@@ -133,10 +152,10 @@ export function UncategorizedPanel() {
                   ))}
                 </select>
                 {merchantToken && (
-                  <label className="flex items-center gap-2 text-xs text-zinc-600">
+                  <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
                     <input
                       type="checkbox"
-                      className="rounded border-zinc-300"
+                      className="h-3.5 w-3.5 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500/30 dark:border-zinc-600 dark:bg-zinc-800"
                       checked={applyToAll[tx.id] !== false}
                       onChange={(e) =>
                         setApplyToAll((prev) => ({
