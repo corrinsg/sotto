@@ -196,7 +196,7 @@ export function computeCategorized(
 }
 
 export interface CategoryTotal {
-  category: Category | "Uncategorized";
+  category: Category | "Uncategorised";
   total: number;
   count: number;
 }
@@ -210,7 +210,7 @@ export function computeTotalsByCategory(
   for (const { tx, category } of categorized) {
     if (tx.details === "BALANCE BROUGHT FORWARD") continue;
     if (tx.kind !== "debit") continue;
-    const key = category ?? "Uncategorized";
+    const key = category ?? "Uncategorised";
     const prev = totals.get(key) ?? { total: 0, count: 0 };
     totals.set(key, {
       total: prev.total + Math.abs(tx.amount),
@@ -220,7 +220,7 @@ export function computeTotalsByCategory(
 
   return Array.from(totals.entries())
     .map(([category, v]) => ({
-      category: category as Category | "Uncategorized",
+      category: category as Category | "Uncategorised",
       total: v.total,
       count: v.count,
     }))

@@ -23,7 +23,7 @@ const COLORS: Record<string, string> = {
   Cash: "#78716c",
   Income: "#059669",
   Other: "#a1a1aa",
-  Uncategorized: "#d4d4d8",
+  Uncategorised: "#d4d4d8",
   Others: "#a1a1aa",
 };
 

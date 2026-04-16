@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import * as pdfjsLib from "pdfjs-dist";
 
-import { parseHsbcStatement } from "../parser/hsbcParser";
+import { parseStatementPdf } from "../parser/pdfParser";
 import type { Transaction } from "../parser/types";
 import { categorize, extractMerchantToken } from "./categorize";
 import type { Category } from "./types";
@@ -124,7 +124,7 @@ describe("categorize — coverage on real fixture", () => {
   test("categorizes at least 70% of the sample statement", async () => {
     const pdf = readFileSync(FIXTURE);
     const data = new Uint8Array(pdf.buffer, pdf.byteOffset, pdf.byteLength);
-    const { transactions } = await parseHsbcStatement(data);
+    const { transactions } = await parseStatementPdf(data);
     const categorizedCount = transactions.filter(
       (t) => categorize(t).category !== null,
     ).length;
@@ -135,7 +135,7 @@ describe("categorize — coverage on real fixture", () => {
   test("no debit is ever categorized as Income", async () => {
     const pdf = readFileSync(FIXTURE);
     const data = new Uint8Array(pdf.buffer, pdf.byteOffset, pdf.byteLength);
-    const { transactions } = await parseHsbcStatement(data);
+    const { transactions } = await parseStatementPdf(data);
     for (const t of transactions) {
       if (t.kind === "debit") {
         expect(categorize(t).category).not.toBe("Income");

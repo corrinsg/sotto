@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { createRequire } from "node:module";
 import * as pdfjsLib from "pdfjs-dist";
 
-import { parseStatementPdf } from "./hsbcParser";
+import { parseStatementPdf } from "./pdfParser";
 import {
   buildSyntheticLloydsStatement,
   SYNTHETIC_LLOYDS_GOLDEN,

@@ -8,7 +8,7 @@ A privacy-first bank statement analyser. Drop your PDF or CSV, get a categorised
 
 1. You drop one or more bank statements (PDF or CSV) into the browser.
 2. The parser extracts transactions entirely client-side using [pdf.js](https://mozilla.github.io/pdf.js/) (for PDFs) or a built-in CSV tokeniser.
-3. A rule-based dictionary auto-categorises each transaction into one of 17 spend categories (Groceries, Dining Out, Transport, etc.).
+3. A rule-based dictionary auto-categorises each transaction into one of 18 spend categories (Groceries, Dining Out, Transport, etc.).
 4. You review anything the dictionary missed, tag it, and optionally "apply to all matching" — a session rule that auto-categorises future rows with the same merchant.
 5. A donut chart and bar breakdown show where your money went.
 6. Export the categorised data as CSV if you want to keep it.
@@ -38,7 +38,7 @@ These aren't just claims — they're enforced by code and verifiable by anyone:
 
 Groceries, Dining Out, Transport, Car, Utilities, Insurance, Rent/Mortgage, Home, Kids, Pet, Shopping, Entertainment, Health & Fitness, Travel, Subscriptions, Cash, Income, Other.
 
-The dictionary ships ~120 rules covering major UK chains, keyword fallbacks (RESTAURANT, BISTRO, PHARMACY, etc.), and payment-type codes (ATM, DD, etc.). Anything unmatched lands in the review panel for manual tagging.
+The dictionary ships over 170 rules covering major UK chains, keyword fallbacks (RESTAURANT, BISTRO, PHARMACY, etc.), and payment-type codes (ATM, DD, etc.). Anything unmatched lands in the review panel for manual tagging.
 
 ## Tech stack
 

@@ -36,7 +36,6 @@ interface ColumnLayout {
   boundaryOutIn: number;
   boundaryInBal: number;
   headerY: number | null;
-  dateHasYear: boolean;
 }
 
 const DATE_PATTERNS: RegExp[] = [
@@ -211,8 +210,7 @@ function detectColumns(lines: Word[][]): ColumnLayout {
       boundaryOutIn: (paidOutRight + paidInRight) / 2,
       boundaryInBal: (paidInRight + balanceRight) / 2,
       headerY: null,
-      dateHasYear: true,
-    };
+      };
   }
 
   const paidOutRight = bestCols.debit?.x1 ?? 480;
@@ -235,7 +233,6 @@ function detectColumns(lines: Word[][]): ColumnLayout {
     boundaryOutIn: (paidOutRight + paidInRight) / 2,
     boundaryInBal: (paidInRight + balanceRight) / 2,
     headerY,
-    dateHasYear: true,
   };
 }
 
@@ -637,11 +634,6 @@ function normalize(raw: RawTransaction[]): Transaction[] {
   return result;
 }
 
-function toUint8(input: ArrayBuffer | Uint8Array): Uint8Array {
-  if (input instanceof Uint8Array) return input;
-  return new Uint8Array(input);
-}
-
 async function toUint8FromInput(
   input: ArrayBuffer | Uint8Array | File | Blob,
 ): Promise<Uint8Array> {
@@ -719,7 +711,3 @@ export async function parseStatementPdf(
     stats: { pages, rawRows: state.transactions.length, source: "pdf" },
   };
 }
-
-// Backwards-compatible alias. The parser is no longer HSBC-specific but
-// existing callers (and the test suite) import this name.
-export const parseHsbcStatement = parseStatementPdf;

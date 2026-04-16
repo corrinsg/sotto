@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useAppStore } from "./appStore";
-import { parseHsbcStatement } from "../parser/hsbcParser";
+import { parseStatementPdf } from "../parser/pdfParser";
 import { parseCsvStatement } from "../parser/csvParser";
 import { configurePdfjsWorker } from "../parser/pdfjsLoader";
 import type { ParsedStatement } from "../parser/types";
@@ -49,7 +49,7 @@ export function useStatementParser() {
           if (isPdf) {
             configurePdfjsWorker();
             const buffer = await file.arrayBuffer();
-            statement = await parseHsbcStatement(buffer, {
+            statement = await parseStatementPdf(buffer, {
               onProgress: (pct) => setFileProgress(pct),
             });
           } else {

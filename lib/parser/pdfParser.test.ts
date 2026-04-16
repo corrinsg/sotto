@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { createRequire } from "node:module";
 import * as pdfjsLib from "pdfjs-dist";
 
-import { parseHsbcStatement } from "./hsbcParser";
+import { parseStatementPdf } from "./pdfParser";
 import {
   buildSyntheticStatement,
   SYNTHETIC_CLOSING_BALANCE,
@@ -32,14 +32,14 @@ function normalizeDetails(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
+describe("parseStatementPdf — synthetic HSBC-style statement", () => {
   test("row count matches the golden", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     expect(transactions).toHaveLength(SYNTHETIC_GOLDEN.length);
   });
 
   test("every row matches the golden on key fields", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     const diffs: string[] = [];
     for (let i = 0; i < SYNTHETIC_GOLDEN.length; i++) {
       const got = transactions[i];
@@ -83,7 +83,7 @@ describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
   });
 
   test("opening row is BALANCE BROUGHT FORWARD and carries the opening balance", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     const opening = transactions[0];
     expect(opening.details).toMatch(/BALANCE BROUGHT FORWARD/);
     expect(parseFloat(opening.balance.replace(/,/g, ""))).toBeCloseTo(
@@ -93,7 +93,7 @@ describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
   });
 
   test("cross-page BALANCE BROUGHT FORWARD on page 2 is NOT duplicated", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     const broughtForwardCount = transactions.filter((t) =>
       /BALANCE BROUGHT FORWARD/.test(t.details),
     ).length;
@@ -101,7 +101,7 @@ describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
   });
 
   test("totals invariant: sum of real transactions matches balance delta", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     const opening = parseFloat(transactions[0].balance.replace(/,/g, ""));
     let closing = 0;
     for (let i = transactions.length - 1; i >= 0; i--) {
@@ -118,7 +118,7 @@ describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
   });
 
   test("no transaction contains footer bleed or FSCS text", async () => {
-    const { transactions } = await parseHsbcStatement(freshFixture());
+    const { transactions } = await parseStatementPdf(freshFixture());
     for (const t of transactions) {
       expect(t.details).not.toMatch(/BALANCE CARRIED FORWARD/i);
       expect(t.details).not.toMatch(/BALANCECARRIEDFORWARD/i);
@@ -128,7 +128,7 @@ describe("parseHsbcStatement — synthetic HSBC-style statement", () => {
   });
 
   test("stats report the right number of pages", async () => {
-    const { stats } = await parseHsbcStatement(freshFixture());
+    const { stats } = await parseStatementPdf(freshFixture());
     expect(stats.pages).toBe(2);
     expect(stats.rawRows).toBeGreaterThan(0);
   });

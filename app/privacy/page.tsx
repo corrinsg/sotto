@@ -123,7 +123,7 @@ export default function PrivacyPage() {
             <pre className="mt-4 overflow-x-auto rounded-xl border border-zinc-200/60 bg-zinc-50 p-4 text-xs leading-5 text-zinc-700 dark:border-zinc-800/60 dark:bg-zinc-950 dark:text-zinc-300">
 {`Content-Security-Policy:
   default-src 'self';
-  script-src 'self' 'nonce-<per-request>' 'strict-dynamic' 'wasm-unsafe-eval';
+  script-src 'self' 'nonce-<per-request>' 'strict-dynamic';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:;
   font-src 'self' data:;
