@@ -15,8 +15,10 @@ import type {
 // Despite the file name this parser is now generic across UK banks with
 // text-based PDF statements. It detects column layout dynamically from
 // a header-keyword dictionary, so it handles variations in column order,
-// labels, and date formats. Originally written against HSBC and still
-// covers that format as a special case.
+// labels, and date formats. Originally written against HSBC; now also
+// covers Lloyds (separate Type column, "In (£)" / "Out (£)" headers)
+// and NatWest (phrase-based transaction types like "Card Transaction",
+// per-page "BROUGHT FORWARD" rows, and continuation dates without year).
 
 interface Word {
   text: string;
@@ -36,11 +38,19 @@ interface ColumnLayout {
   boundaryOutIn: number;
   boundaryInBal: number;
   headerY: number | null;
+  // Right edge of the date column. Words with x0 < dateRegionRight are
+  // candidates for the date field; everything else goes to description /
+  // type / amounts. Computed from the actual header layout so that a
+  // wide "DD MMM YYYY" date isn't truncated to "DD MMM" when its last
+  // token spills a few units past a hardcoded margin.
+  dateRegionRight: number;
 }
 
 const DATE_PATTERNS: RegExp[] = [
   // DD MMM YY or DD MMM YYYY  (HSBC "04 May 23", Lloyds "04 May 2023")
   /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2,4}$/i,
+  // DD MMM  (NatWest continuation dates — year must be inferred from context)
+  /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/i,
   // DD/MM/YY(YY)  (Santander, many others)
   /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,
   // DD-MM-YY(YY)
@@ -51,6 +61,11 @@ const DATE_PATTERNS: RegExp[] = [
   /^\d{4}-\d{1,2}-\d{1,2}$/,
 ];
 
+const BARE_MMM_DATE_RE =
+  /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/i;
+const FULL_MMM_DATE_RE =
+  /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})$/i;
+
 const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
 
 // Payment type prefix codes commonly embedded at the start of the details
@@ -58,6 +73,12 @@ const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
 // separately via column detection.
 const PAYMENT_TYPE_RE =
   /^(VIS|BP|CR|DR|DD|CHQ|SO|TFR|\)\)\)|FPI|FPO|BGC|ATM|CPT|DEB|POS|SAL|SBT|SPB)\s*/;
+
+// NatWest uses human-readable phrases instead of codes at the start of each
+// transaction. Recognising them lets us split same-day transactions that
+// would otherwise merge together (NatWest only prints the date once per day).
+const NATWEST_TYPE_PHRASE_RE =
+  /^(Card Transaction|Standing Order|Direct Debit|Automated Credit|Automated Debit|Automated Payment|OnLine Transaction|Online Transaction|Mobile Transaction|Mobile Payment|ATM Cash Withdrawal|Cash Withdrawal|Bill Payment|BACS Credit|Faster Payment|Interest Paid|Unpaid Item|Cheque Paid|Cheque Deposit|Transfer)\s+/i;
 
 // Single-word type codes that might appear in a separate Type column.
 const TYPE_CODE_RE = /^(VIS|BP|CR|DR|DD|CHQ|SO|TFR|FPI|FPO|BGC|ATM|CPT|DEB|POS|SAL|SBT|SPB)$/;
@@ -96,6 +117,7 @@ const HEADER_KEYWORDS: Record<
   debit: [
     ["paid", "out"],
     ["money", "out"],
+    ["withdrawn"],
     ["withdrawal"],
     ["withdrawals"],
     ["debit"],
@@ -118,6 +140,12 @@ const HEADER_KEYWORDS: Record<
   ],
 };
 
+// Strip currency symbols, parens, and punctuation so header tokens like
+// "Withdrawn(£)", "In(£)", "Balance(£)" match plain keywords.
+function normalizeHeaderToken(text: string): string {
+  return text.toLowerCase().replace(/[£()$€:]/g, "").trim();
+}
+
 function findPhraseInLine(
   line: Word[],
   phrase: string[],
@@ -125,7 +153,7 @@ function findPhraseInLine(
   if (phrase.length === 0 || line.length < phrase.length) return null;
   outer: for (let i = 0; i <= line.length - phrase.length; i++) {
     for (let j = 0; j < phrase.length; j++) {
-      if (line[i + j].text.toLowerCase() !== phrase[j]) {
+      if (normalizeHeaderToken(line[i + j].text) !== phrase[j]) {
         continue outer;
       }
     }
@@ -200,16 +228,18 @@ function detectColumns(lines: Word[][]): ColumnLayout {
     const paidOutRight = 480;
     const paidInRight = 620;
     const balanceRight = 740;
+    const detailsX = 120;
     return {
       paidOutRight,
       paidInRight,
       balanceRight,
-      detailsX: 120,
+      detailsX,
       typeX0: null,
       typeX1: null,
       boundaryOutIn: (paidOutRight + paidInRight) / 2,
       boundaryInBal: (paidInRight + balanceRight) / 2,
       headerY: null,
+      dateRegionRight: detailsX - 20,
       };
   }
 
@@ -223,6 +253,16 @@ function detectColumns(lines: Word[][]): ColumnLayout {
   const typeX1 = bestCols.type?.x1 ?? null;
   const headerY = bestLine[bestLine.length - 1].top;
 
+  // Use the midpoint between the date header's right edge and the
+  // description column's left edge so that wider date strings
+  // ("DD MMM YYYY") aren't clipped. Description always comes immediately
+  // after Date — never use the Type column here, which may sit much
+  // further right (Lloyds places Type after Description).
+  const dateRegionRight =
+    bestCols.date !== undefined
+      ? (bestCols.date.x1 + detailsX) / 2
+      : detailsX - 20;
+
   return {
     paidOutRight,
     paidInRight,
@@ -233,6 +273,7 @@ function detectColumns(lines: Word[][]): ColumnLayout {
     boundaryOutIn: (paidOutRight + paidInRight) / 2,
     boundaryInBal: (paidInRight + balanceRight) / 2,
     headerY,
+    dateRegionRight,
   };
 }
 
@@ -260,6 +301,15 @@ function findFooterStart(words: Word[]): number {
     if (text === "Authorised" || text === "authorised") {
       const next = words[i + 1]?.text?.toLowerCase();
       if (next === "and" || next === "by") return i;
+    }
+    // NatWest per-page footer.
+    if (text === "National") {
+      const next = words[i + 1]?.text;
+      if (next === "Westminster") return i;
+    }
+    if (text === "Registered") {
+      const next = words[i + 1]?.text;
+      if (next === "Office:" || next === "Office") return i;
     }
   }
   return -1;
@@ -363,10 +413,19 @@ function stripFooterWords(line: Word[]): Word[] {
 }
 
 function isFscsLine(line: Word[]): boolean {
-  for (const w of line) {
-    if (w.text === "FSCS") return true;
-    if (w.text === "Financial") return true;
-    if (w.text === "Compensation") return true;
+  // Look for the HSBC end-of-statement FSCS notice. We used to match any
+  // "Financial" or "Compensation" token but NatWest's per-page footer
+  // contains "Financial Conduct Authority", which false-positived and
+  // killed parsing for every page after page 1.
+  for (let i = 0; i < line.length; i++) {
+    if (line[i].text === "FSCS") return true;
+    if (line[i].text === "Financial" || line[i].text === "financial") {
+      const next = line[i + 1]?.text?.toLowerCase();
+      if (next === "services") {
+        const after = line[i + 2]?.text?.toLowerCase();
+        if (after === "compensation") return true;
+      }
+    }
   }
   return false;
 }
@@ -375,10 +434,48 @@ interface ParserState {
   transactions: RawTransaction[];
   current: RawTransaction | null;
   reachedFscs: boolean;
+  // Year inference for bank formats (like NatWest) that omit the year on
+  // continuation dates. Updated whenever a full date is seen; the month
+  // index lets us detect year rollover (DEC → JAN).
+  lastYear: string;
+  lastMonthIdx: number;
 }
 
 function makeParserState(): ParserState {
-  return { transactions: [], current: null, reachedFscs: false };
+  return {
+    transactions: [],
+    current: null,
+    reachedFscs: false,
+    lastYear: "",
+    lastMonthIdx: -1,
+  };
+}
+
+// Expand a bare "DD MMM" date to "DD MMM YYYY" using the most recent full
+// date seen. Increments the year when the month rolls back (DEC → JAN).
+// Updates state trackers for any parseable MMM date. Returns the (possibly
+// expanded) date string.
+function canonicaliseDate(dateStr: string, state: ParserState): string {
+  const full = FULL_MMM_DATE_RE.exec(dateStr);
+  if (full) {
+    const monthIdx = parseInt(MONTH_TO_NUMBER[full[2].toLowerCase()] ?? "0", 10) - 1;
+    const year = full[3].length === 2 ? `20${full[3]}` : full[3];
+    state.lastYear = year;
+    state.lastMonthIdx = monthIdx;
+    return dateStr;
+  }
+
+  const bare = BARE_MMM_DATE_RE.exec(dateStr);
+  if (bare && state.lastYear) {
+    const monthIdx = parseInt(MONTH_TO_NUMBER[bare[2].toLowerCase()] ?? "0", 10) - 1;
+    let year = parseInt(state.lastYear, 10);
+    if (state.lastMonthIdx >= 0 && monthIdx < state.lastMonthIdx) year += 1;
+    state.lastYear = year.toString();
+    state.lastMonthIdx = monthIdx;
+    return `${bare[1]} ${bare[2]} ${year}`;
+  }
+
+  return dateStr;
 }
 
 function parseDataLines(
@@ -411,7 +508,7 @@ function parseDataLines(
   function processLine(line: Word[]): void {
     // Split the line into date-region words, type-column words, and
     // other words based on the detected column x-positions.
-    const dateRegionRight = cols.detailsX - 20;
+    const dateRegionRight = cols.dateRegionRight;
     const dateWordsInLine: Word[] = [];
     const typeWordsInLine: Word[] = [];
     const otherWords: Word[] = [];
@@ -447,6 +544,10 @@ function parseDataLines(
       }
     }
 
+    if (hasDate) {
+      dateStr = canonicaliseDate(dateStr, state);
+    }
+
     const wordsToCheck = hasDate
       ? otherWords
       : dateWordsInLine.length > 0
@@ -480,10 +581,13 @@ function parseDataLines(
     let detailText = detailWords.join(" ").trim();
     detailText = detailText.replace(/\s+/g, " ");
 
-    const isBroughtForward = /BALANCE\s*BROUGHT\s*FORWARD/i.test(detailText);
+    // HSBC prints "BALANCE BROUGHT FORWARD"; NatWest prints just
+    // "BROUGHT FORWARD" on every page. Either way we only want to record
+    // the opening balance once (not on every page break) and we must not
+    // let the text leak into the previous page's last transaction.
+    const isBroughtForward = /(?:BALANCE\s*)?BROUGHT\s*FORWARD/i.test(detailText);
     if (isBroughtForward) {
-      if (state.transactions.length === 0) {
-        if (state.current) state.transactions.push(state.current);
+      if (state.transactions.length === 0 && !state.current) {
         state.transactions.push({
           date: dateStr,
           paymentType: "",
@@ -492,6 +596,8 @@ function parseDataLines(
           paidIn: "",
           balance: balanceVal,
         });
+      } else if (state.current) {
+        state.transactions.push(state.current);
         state.current = null;
       }
       return;
@@ -499,15 +605,22 @@ function parseDataLines(
 
     // Payment type: prefer the dedicated Type column when the header had
     // one and we found a code in that column. Otherwise fall back to the
-    // embedded-prefix convention that HSBC uses.
+    // embedded-prefix convention that HSBC uses, or the phrase convention
+    // NatWest uses ("Card Transaction", "Standing Order", etc.).
     let paymentType = "";
     if (typeWordsInLine.length > 0) {
       paymentType = typeWordsInLine[0].text;
     } else {
-      const m = detailText.match(PAYMENT_TYPE_RE);
-      if (m) {
-        paymentType = m[1];
-        detailText = detailText.slice(m[0].length).trim();
+      const codeMatch = detailText.match(PAYMENT_TYPE_RE);
+      if (codeMatch) {
+        paymentType = codeMatch[1];
+        detailText = detailText.slice(codeMatch[0].length).trim();
+      } else {
+        const phraseMatch = detailText.match(NATWEST_TYPE_PHRASE_RE);
+        if (phraseMatch) {
+          paymentType = phraseMatch[1];
+          detailText = detailText.slice(phraseMatch[0].length).trim();
+        }
       }
     }
 
@@ -525,6 +638,16 @@ function parseDataLines(
         balance: balanceVal,
       };
     } else if (state.current !== null) {
+      // Once a transaction has its balance recorded, the row is "closed":
+      // in HSBC/NatWest/Lloyds layouts, a subsequent line without a date,
+      // type, or amounts is no longer description wrap — it's post-table
+      // marketing, legal, or per-page footer text. Dropping it prevents
+      // that noise from leaking into the last real transaction.
+      const currentClosed = !!state.current.balance;
+      const lineHasAmounts = !!(paidOutVal || paidInVal || balanceVal);
+      if (currentClosed && !lineHasAmounts) {
+        return;
+      }
       if (detailText) {
         state.current.details =
           state.current.details.length > 0
