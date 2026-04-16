@@ -7,7 +7,7 @@ const STEPS = [
   },
   {
     title: "Your browser parses it",
-    body: "Everything happens in your browser using WebAssembly. The file never touches a server.",
+    body: "Everything happens in your browser using JavaScript. The file never touches a server.",
   },
   {
     title: "See your spend",
