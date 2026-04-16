@@ -181,14 +181,12 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "SOTOPA", category: "Kids" },
 
   // Home — cleaner, gardener, handyperson, appliance repair
-  { match: "VIORICA", category: "Home" },
   { match: "APPLIANCE FIX", category: "Home" },
 
   // Health
   { match: "FINCHLEY DENTAL", category: "Health & Fitness" },
   { match: "EAR WAX", category: "Health & Fitness" },
   { match: "BUPA", category: "Health & Fitness", appliesTo: "credit" },
-  { match: "SHEMESH", category: "Health & Fitness" },
   { match: "PURE GYM", category: "Health & Fitness" },
   { match: "PUREGYM", category: "Health & Fitness" },
   // Keyword fallbacks for pharmacies — higher priority so they beat
@@ -212,9 +210,6 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "ENGLISH HERITAGE", category: "Travel" },
   { match: "HERTFORDSHIREZOO", category: "Travel" },
   { match: "HERTFORDSHIRE ZOO", category: "Travel" },
-
-  // Rent/Mortgage
-  { match: "QINGUO", category: "Rent/Mortgage" },
 
   // Income
   { match: "CHAINLINK LABS", category: "Income", appliesTo: "credit" },
