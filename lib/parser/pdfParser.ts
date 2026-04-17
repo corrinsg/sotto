@@ -44,6 +44,12 @@ interface ColumnLayout {
   // wide "DD MMM YYYY" date isn't truncated to "DD MMM" when its last
   // token spills a few units past a hardcoded margin.
   dateRegionRight: number;
+  // Monzo-style layouts have a single signed "Amount" column where the
+  // sign (not the column) decides whether the row is a debit or credit.
+  // When this is true, the parser splits values on sign instead of on
+  // column x-position, and only `balanceRight` and this flag matter for
+  // money classification.
+  signedAmountMode: boolean;
 }
 
 const DATE_PATTERNS: RegExp[] = [
@@ -67,6 +73,10 @@ const FULL_MMM_DATE_RE =
   /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})$/i;
 
 const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
+// Signed amount variant for banks (Monzo) that use a single signed "Amount"
+// column instead of separate debit/credit columns. An optional leading "-"
+// marks a debit; everything else is a credit.
+const SIGNED_AMOUNT_RE = /^-?[\d,]+\.\d{2}$/;
 
 // Payment type prefix codes commonly embedded at the start of the details
 // string (HSBC convention). Banks with a dedicated Type column are handled
@@ -101,7 +111,7 @@ const MONTH_TO_NUMBER: Record<string, string> = {
 // Header keyword dictionary. Phrases listed most-specific first so that
 // "paid in" is tried before a fallback match on "in" alone.
 const HEADER_KEYWORDS: Record<
-  "date" | "description" | "type" | "debit" | "credit" | "balance",
+  "date" | "description" | "type" | "debit" | "credit" | "balance" | "amount",
   string[][]
 > = {
   date: [["date"], ["transaction", "date"], ["posting", "date"]],
@@ -138,12 +148,20 @@ const HEADER_KEYWORDS: Record<
     ["account", "balance"],
     ["balance"],
   ],
+  // Monzo uses a single signed "Amount" column instead of separate
+  // debit/credit columns; negative values are debits, positive credits.
+  amount: [["amount"]],
 };
 
-// Strip currency symbols, parens, and punctuation so header tokens like
-// "Withdrawn(£)", "In(£)", "Balance(£)" match plain keywords.
+// Strip currency symbols, parens, punctuation, and common currency-code
+// prefixes so header tokens like "Withdrawn(£)", "In(£)", "Balance(£)",
+// and Monzo's "(GBP)" all reduce to the base keyword.
 function normalizeHeaderToken(text: string): string {
-  return text.toLowerCase().replace(/[£()$€:]/g, "").trim();
+  return text
+    .toLowerCase()
+    .replace(/\(gbp\)|\(eur\)|\(usd\)/g, "")
+    .replace(/[£()$€:]/g, "")
+    .trim();
 }
 
 function findPhraseInLine(
@@ -169,12 +187,13 @@ interface DetectedCols {
   debit?: { x0: number; x1: number };
   credit?: { x0: number; x1: number };
   balance?: { x0: number; x1: number };
+  amount?: { x0: number; x1: number };
 }
 
 function detectColsInLine(line: Word[]): DetectedCols {
   const detected: DetectedCols = {};
   const consumed = new Set<number>();
-  const categories = ["debit", "credit", "balance", "description", "type", "date"] as const;
+  const categories = ["debit", "credit", "balance", "amount", "description", "type", "date"] as const;
   for (const category of categories) {
     for (const phrase of HEADER_KEYWORDS[category]) {
       const match = findPhraseInLine(line, phrase);
@@ -200,6 +219,7 @@ function scoreHeader(cols: DetectedCols): number {
   if (cols.debit) s += 2;
   if (cols.credit) s += 2;
   if (cols.balance) s += 2;
+  if (cols.amount) s += 2;
   if (cols.date) s += 1;
   if (cols.description) s += 1;
   if (cols.type) s += 1;
@@ -240,12 +260,24 @@ function detectColumns(lines: Word[][]): ColumnLayout {
       boundaryInBal: (paidInRight + balanceRight) / 2,
       headerY: null,
       dateRegionRight: detailsX - 20,
+      signedAmountMode: false,
       };
   }
 
-  const paidOutRight = bestCols.debit?.x1 ?? 480;
+  const signedAmountMode =
+    bestCols.amount !== undefined &&
+    bestCols.debit === undefined &&
+    bestCols.credit === undefined;
+
+  // In signed-amount mode, reuse the amount column's x1 for both
+  // paidOutRight and paidInRight so the nearest-neighbour test still
+  // places amounts in the money column; the sign of the value decides
+  // debit vs credit later in processLine.
+  const paidOutRight =
+    bestCols.debit?.x1 ?? bestCols.amount?.x1 ?? 480;
   const paidInRight =
     bestCols.credit?.x1 ??
+    bestCols.amount?.x1 ??
     (bestCols.debit ? paidOutRight + 140 : 620);
   const balanceRight = bestCols.balance?.x1 ?? paidInRight + 120;
   const detailsX = bestCols.description?.x0 ?? 120;
@@ -274,6 +306,7 @@ function detectColumns(lines: Word[][]): ColumnLayout {
     boundaryInBal: (paidInRight + balanceRight) / 2,
     headerY,
     dateRegionRight,
+    signedAmountMode,
   };
 }
 
@@ -374,6 +407,45 @@ function extractWords(
   return words;
 }
 
+// Some PDFs (Monzo in particular) emit each glyph or digit-run as a
+// separate text operator, so "£276.70" comes back as ["£276", ".7", "0"]
+// and "26/05/2022" as ["26", "/05/2022"]. After lines are grouped, walk
+// each line left-to-right and merge neighbours whose x-ranges are close
+// enough that they must be fragments of the same visual token.
+//
+// We only merge when the concatenation looks numeric/date-like (digits,
+// separators, currency markers, signs) so that legitimately adjacent
+// words in description text — which pdf.js sometimes renders with tiny
+// gaps — are left alone.
+const NUMERIC_FRAGMENT_CHAR = /^[\d,.\-+£$€/]+$/;
+function looksNumericLike(text: string): boolean {
+  return NUMERIC_FRAGMENT_CHAR.test(text);
+}
+
+function coalesceLineFragments(line: Word[], maxGap = 4): Word[] {
+  if (line.length <= 1) return line;
+  const sorted = [...line].sort((a, b) => a.x0 - b.x0);
+  const out: Word[] = [];
+  for (const w of sorted) {
+    const last = out[out.length - 1];
+    const gap = last ? w.x0 - last.x1 : Infinity;
+    if (
+      last &&
+      gap <= maxGap &&
+      looksNumericLike(last.text) &&
+      looksNumericLike(w.text)
+    ) {
+      last.text = last.text + w.text;
+      last.x1 = Math.max(last.x1, w.x1);
+      last.top = Math.min(last.top, w.top);
+      last.bottom = Math.max(last.bottom, w.bottom);
+      continue;
+    }
+    out.push({ ...w });
+  }
+  return out;
+}
+
 function groupIntoLines(words: Word[], yTolerance = 5): Word[][] {
   const sorted = [...words].sort((a, b) => {
     const aY = Math.round(a.top * 10) / 10;
@@ -439,6 +511,15 @@ interface ParserState {
   // index lets us detect year rollover (DEC → JAN).
   lastYear: string;
   lastMonthIdx: number;
+  // Description-line buffer for banks (Monzo) that print the merchant
+  // descriptor on the line immediately above the date+amount line. When
+  // the date-line arrives we prepend this buffer to the row's details,
+  // then clear it.
+  pendingDesc: string;
+  // y-position of the most recent line that contributed amounts to the
+  // current transaction. Lets us tell a close "post-amount wrap" from a
+  // far-away "pre-desc for the next transaction" in Monzo layouts.
+  lastMoneyLineY: number | null;
 }
 
 function makeParserState(): ParserState {
@@ -448,6 +529,8 @@ function makeParserState(): ParserState {
     reachedFscs: false,
     lastYear: "",
     lastMonthIdx: -1,
+    pendingDesc: "",
+    lastMoneyLineY: null,
   };
 }
 
@@ -563,16 +646,32 @@ function parseDataLines(
     // Using nearest-neighbour instead of a left-to-right boundary lets
     // us handle banks that put credit before debit (Lloyds) or any
     // other non-HSBC ordering.
+    //
+    // In signed-amount mode (Monzo) we only have two money columns —
+    // Amount and Balance — and the sign of the Amount value tells us
+    // whether the row is a debit or credit.
+    const amountRe = cols.signedAmountMode ? SIGNED_AMOUNT_RE : AMOUNT_RE;
     for (const w of wordsToCheck) {
-      if (AMOUNT_RE.test(w.text)) {
+      if (amountRe.test(w.text)) {
         const right = w.x1;
-        const dOut = Math.abs(right - cols.paidOutRight);
-        const dIn = Math.abs(right - cols.paidInRight);
-        const dBal = Math.abs(right - cols.balanceRight);
-        const min = Math.min(dOut, dIn, dBal);
-        if (min === dOut) paidOutVal = w.text;
-        else if (min === dIn) paidInVal = w.text;
-        else balanceVal = w.text;
+        if (cols.signedAmountMode) {
+          const dAmt = Math.abs(right - cols.paidOutRight);
+          const dBal = Math.abs(right - cols.balanceRight);
+          if (dAmt <= dBal) {
+            if (w.text.startsWith("-")) paidOutVal = w.text.slice(1);
+            else paidInVal = w.text;
+          } else {
+            balanceVal = w.text;
+          }
+        } else {
+          const dOut = Math.abs(right - cols.paidOutRight);
+          const dIn = Math.abs(right - cols.paidInRight);
+          const dBal = Math.abs(right - cols.balanceRight);
+          const min = Math.min(dOut, dIn, dBal);
+          if (min === dOut) paidOutVal = w.text;
+          else if (min === dIn) paidInVal = w.text;
+          else balanceVal = w.text;
+        }
       } else {
         detailWords.push(w.text);
       }
@@ -624,29 +723,79 @@ function parseDataLines(
       }
     }
 
+    const lineY = line[0]?.top ?? 0;
+    const lineHasAmounts = !!(paidOutVal || paidInVal || balanceVal);
+
     if (hasDate || paymentType) {
-      if (!detailText && !paidOutVal && !paidInVal && !balanceVal) {
+      if (!detailText && !paidOutVal && !paidInVal && !balanceVal && !state.pendingDesc) {
         return;
       }
+      // Merge any pre-txn description the buffer was holding (Monzo
+      // prints the merchant name on the line above the amount line).
+      const merged = state.pendingDesc
+        ? detailText
+          ? `${state.pendingDesc} ${detailText}`
+          : state.pendingDesc
+        : detailText;
+      state.pendingDesc = "";
       if (state.current) state.transactions.push(state.current);
       state.current = {
         date: hasDate ? dateStr : "",
         paymentType,
-        details: detailText,
+        details: merged,
         paidOut: paidOutVal,
         paidIn: paidInVal,
         balance: balanceVal,
       };
-    } else if (state.current !== null) {
+      state.lastMoneyLineY = lineHasAmounts ? lineY : null;
+    } else if (state.current === null) {
+      // Pre-txn desc-only line. Only Monzo-style layouts use this
+      // pattern, so only buffer when we've detected a signed-amount
+      // column — otherwise loose text before the first row (headers,
+      // footers, summary blocks) would leak into the first transaction.
+      if (cols.signedAmountMode && detailText) {
+        state.pendingDesc = state.pendingDesc
+          ? `${state.pendingDesc} ${detailText}`
+          : detailText;
+      }
+    } else {
+      // state.current !== null — this is a continuation/wrap line.
+      //
       // Once a transaction has its balance recorded, the row is "closed":
       // in HSBC/NatWest/Lloyds layouts, a subsequent line without a date,
       // type, or amounts is no longer description wrap — it's post-table
       // marketing, legal, or per-page footer text. Dropping it prevents
       // that noise from leaking into the last real transaction.
+      //
+      // Monzo's descriptor also wraps onto the line immediately AFTER
+      // the amount line (e.g. "GIBGIB" country code), and the line
+      // immediately BEFORE the next row's amount line. We tell the two
+      // apart by measuring the y-gap from the last amount line: a close
+      // neighbour is a post-amount wrap; a far-away desc-only line is
+      // pre-description for the upcoming row, so we flush current and
+      // stash the text in pendingDesc.
       const currentClosed = !!state.current.balance;
-      const lineHasAmounts = !!(paidOutVal || paidInVal || balanceVal);
       if (currentClosed && !lineHasAmounts) {
-        return;
+        if (cols.signedAmountMode) {
+          const gap =
+            state.lastMoneyLineY !== null
+              ? lineY - state.lastMoneyLineY
+              : Infinity;
+          const POST_AMOUNT_WRAP_MAX_GAP = 15;
+          if (gap > POST_AMOUNT_WRAP_MAX_GAP) {
+            state.transactions.push(state.current);
+            state.current = null;
+            state.lastMoneyLineY = null;
+            if (detailText) {
+              state.pendingDesc = state.pendingDesc
+                ? `${state.pendingDesc} ${detailText}`
+                : detailText;
+            }
+            return;
+          }
+        } else {
+          return;
+        }
       }
       if (detailText) {
         state.current.details =
@@ -657,6 +806,7 @@ function parseDataLines(
       if (paidOutVal) state.current.paidOut = paidOutVal;
       if (paidInVal) state.current.paidIn = paidInVal;
       if (balanceVal) state.current.balance = balanceVal;
+      if (lineHasAmounts) state.lastMoneyLineY = lineY;
     }
   }
 }
@@ -776,7 +926,8 @@ async function parsePage(
   const words = extractWords(textContent, pageHeight);
   if (words.length === 0) return;
 
-  const lines = groupIntoLines(words, 5);
+  const rawLines = groupIntoLines(words, 5);
+  const lines = rawLines.map((line) => coalesceLineFragments(line));
   const cols = detectColumns(lines);
 
   const headerY = cols.headerY ?? 0;
