@@ -186,6 +186,8 @@ export const STARTER_RULES: MerchantRule[] = [
 
   // Cash withdrawals — matched on HSBC's ATM payment type code
   { match: "", paymentType: "ATM", category: "Cash", priority: 10 },
+  { match: "POSTOFFICE MONEY", category: "Cash" },
+  { match: "POST OFFICE MONEY", category: "Cash" },
 
   // Subscriptions
   { match: "NETFLIX", category: "Subscriptions" },

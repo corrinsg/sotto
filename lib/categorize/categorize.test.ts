@@ -87,6 +87,7 @@ describe("categorize — unit tests", () => {
     ["TV LICENCE QBP1", "Utilities"],
     ["NHSBSA PPC", "Health & Fitness"],
     ["FIRSTCENTRALSERV", "Insurance"],
+    ["POSTOFFICE MONEY", "Cash"],
   ])("%s → %s", (details, expected) => {
     const result = categorize(mockTx(details));
     expect(result.category).toBe(expected);
