@@ -72,11 +72,20 @@ const BARE_MMM_DATE_RE =
 const FULL_MMM_DATE_RE =
   /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})$/i;
 
-const AMOUNT_RE = /^[\d,]+\.\d{2}$/;
+// Accept an optional leading "£" so Starling-style amounts ("£307.97")
+// classify the same as HSBC/Lloyds/NatWest bare numbers. The currency
+// symbol is stripped before the numeric string is stored.
+const AMOUNT_RE = /^£?[\d,]+\.\d{2}$/;
 // Signed amount variant for banks (Monzo) that use a single signed "Amount"
 // column instead of separate debit/credit columns. An optional leading "-"
 // marks a debit; everything else is a credit.
-const SIGNED_AMOUNT_RE = /^-?[\d,]+\.\d{2}$/;
+const SIGNED_AMOUNT_RE = /^-?£?[\d,]+\.\d{2}$/;
+
+// Strip currency symbols from an amount string before storage so
+// downstream parseFloat/Math work without special-casing.
+function stripAmountPrefix(text: string): string {
+  return text.replace(/^(-?)£/, "$1");
+}
 
 // Payment type prefix codes commonly embedded at the start of the details
 // string (HSBC convention). Banks with a dedicated Type column are handled
@@ -119,6 +128,7 @@ const HEADER_KEYWORDS: Record<
     ["description"],
     ["details"],
     ["transaction", "details"],
+    ["transaction"],
     ["reference"],
     ["narrative"],
     ["particulars"],
@@ -231,13 +241,56 @@ function detectColumns(lines: Word[][]): ColumnLayout {
   let bestCols: DetectedCols = {};
   let bestLine: Word[] | null = null;
 
+  // Two passes: first look for any single line that's already a
+  // complete header (has debit + credit + balance). If one exists, it
+  // wins. Only if no complete single-line header is found do we try
+  // 2-line merges — this handles Starling's "ACCOUNT" / "BALANCE" wrap
+  // without letting unrelated sub-headers on HSBC ("Your Bank Account
+  // details" above the real header) glue themselves in.
+  const isCompleteHeader = (c: DetectedCols): boolean =>
+    c.balance !== undefined &&
+    (c.debit !== undefined ||
+      c.credit !== undefined ||
+      c.amount !== undefined);
+
   for (const line of lines) {
     const cols = detectColsInLine(line);
-    const score = scoreHeader(cols);
-    if (score > bestScore) {
-      bestScore = score;
-      bestCols = cols;
-      bestLine = line;
+    if (isCompleteHeader(cols)) {
+      const score = scoreHeader(cols);
+      if (score > bestScore) {
+        bestScore = score;
+        bestCols = cols;
+        bestLine = line;
+      }
+    }
+  }
+
+  if (!bestLine) {
+    for (let i = 0; i < lines.length; i++) {
+      let cols = detectColsInLine(lines[i]);
+      let score = scoreHeader(cols);
+      let line = lines[i];
+
+      if (cols.balance === undefined && i + 1 < lines.length) {
+        const nextTop = lines[i + 1][0]?.top ?? Infinity;
+        const thisBottom = lines[i][lines[i].length - 1]?.bottom ?? 0;
+        if (nextTop - thisBottom < 15) {
+          const merged = [...lines[i], ...lines[i + 1]];
+          const mergedCols = detectColsInLine(merged);
+          const mergedScore = scoreHeader(mergedCols);
+          if (mergedCols.balance !== undefined && mergedScore > score) {
+            cols = mergedCols;
+            score = mergedScore;
+            line = merged;
+          }
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCols = cols;
+        bestLine = line;
+      }
     }
   }
 
@@ -285,14 +338,20 @@ function detectColumns(lines: Word[][]): ColumnLayout {
   const typeX1 = bestCols.type?.x1 ?? null;
   const headerY = bestLine[bestLine.length - 1].top;
 
-  // Use the midpoint between the date header's right edge and the
-  // description column's left edge so that wider date strings
-  // ("DD MMM YYYY") aren't clipped. Description always comes immediately
-  // after Date — never use the Type column here, which may sit much
-  // further right (Lloyds places Type after Description).
+  // Use the midpoint between the date header's right edge and whichever
+  // column sits immediately to its right so wider date strings
+  // ("DD MMM YYYY") aren't clipped. Normally that's the description
+  // column, but Starling puts a "TYPE" column directly after the date,
+  // and Lloyds puts type AFTER description — we want the closer of the
+  // two so that Starling's type labels don't get swept into the date
+  // region.
+  const nextColX0 =
+    bestCols.type !== undefined && bestCols.type.x0 < detailsX
+      ? bestCols.type.x0
+      : detailsX;
   const dateRegionRight =
     bestCols.date !== undefined
-      ? (bestCols.date.x1 + detailsX) / 2
+      ? (bestCols.date.x1 + nextColX0) / 2
       : detailsX - 20;
 
   return {
@@ -592,6 +651,17 @@ function parseDataLines(
     // Split the line into date-region words, type-column words, and
     // other words based on the detected column x-positions.
     const dateRegionRight = cols.dateRegionRight;
+    // The TYPE column is bounded on the right by whichever comes first:
+    // the header's own x1 + a small margin, or the description column's
+    // left edge. Starling's "TYPE" header is only 4 characters but the
+    // column visually holds multi-word phrases like "DIRECT CREDIT", so
+    // the effective boundary is better taken from the description start.
+    const typeColRight =
+      cols.typeX1 !== null
+        ? cols.typeX1 < cols.detailsX
+          ? cols.detailsX - 5
+          : cols.typeX1 + 10
+        : null;
     const dateWordsInLine: Word[] = [];
     const typeWordsInLine: Word[] = [];
     const otherWords: Word[] = [];
@@ -599,12 +669,12 @@ function parseDataLines(
     for (const w of line) {
       const inTypeCol =
         cols.typeX0 !== null &&
-        cols.typeX1 !== null &&
+        typeColRight !== null &&
         w.x0 >= cols.typeX0 - 5 &&
-        w.x1 <= cols.typeX1 + 10;
+        w.x1 <= typeColRight;
       if (w.x0 < dateRegionRight) {
         dateWordsInLine.push(w);
-      } else if (inTypeCol && TYPE_CODE_RE.test(w.text)) {
+      } else if (inTypeCol) {
         typeWordsInLine.push(w);
       } else {
         otherWords.push(w);
@@ -631,11 +701,12 @@ function parseDataLines(
       dateStr = canonicaliseDate(dateStr, state);
     }
 
-    const wordsToCheck = hasDate
-      ? otherWords
-      : dateWordsInLine.length > 0
-        ? otherWords
-        : line;
+    // Detail extraction only looks at otherWords: date-column and
+    // type-column contents have already been pulled out, and sweeping
+    // the whole line back in would re-insert those tokens into the
+    // description (Starling bug: the type-wrap token "CHARGE" was
+    // landing in details because the fallback included `line`).
+    const wordsToCheck = otherWords;
 
     const detailWords: string[] = [];
     let paidOutVal = "";
@@ -654,23 +725,24 @@ function parseDataLines(
     for (const w of wordsToCheck) {
       if (amountRe.test(w.text)) {
         const right = w.x1;
+        const clean = stripAmountPrefix(w.text);
         if (cols.signedAmountMode) {
           const dAmt = Math.abs(right - cols.paidOutRight);
           const dBal = Math.abs(right - cols.balanceRight);
           if (dAmt <= dBal) {
-            if (w.text.startsWith("-")) paidOutVal = w.text.slice(1);
-            else paidInVal = w.text;
+            if (clean.startsWith("-")) paidOutVal = clean.slice(1);
+            else paidInVal = clean;
           } else {
-            balanceVal = w.text;
+            balanceVal = clean;
           }
         } else {
           const dOut = Math.abs(right - cols.paidOutRight);
           const dIn = Math.abs(right - cols.paidInRight);
           const dBal = Math.abs(right - cols.balanceRight);
           const min = Math.min(dOut, dIn, dBal);
-          if (min === dOut) paidOutVal = w.text;
-          else if (min === dIn) paidInVal = w.text;
-          else balanceVal = w.text;
+          if (min === dOut) paidOutVal = clean;
+          else if (min === dIn) paidInVal = clean;
+          else balanceVal = clean;
         }
       } else {
         detailWords.push(w.text);
@@ -703,12 +775,21 @@ function parseDataLines(
     }
 
     // Payment type: prefer the dedicated Type column when the header had
-    // one and we found a code in that column. Otherwise fall back to the
+    // one and we found words in that column. Otherwise fall back to the
     // embedded-prefix convention that HSBC uses, or the phrase convention
     // NatWest uses ("Card Transaction", "Standing Order", etc.).
+    //
+    // We also track where the type came from: a type pulled from a
+    // dedicated column is "structural" — a wrap line can hold the tail
+    // of a multi-word type (Starling "SUBSCRIPTION" + "CHARGE") and
+    // should not be treated as a new transaction. A type recovered from
+    // embedded text (HSBC code prefix, NatWest phrase prefix) is what
+    // actually signals a new row when no date is present.
     let paymentType = "";
+    let paymentTypeFromColumn = false;
     if (typeWordsInLine.length > 0) {
-      paymentType = typeWordsInLine[0].text;
+      paymentType = typeWordsInLine.map((w) => w.text).join(" ");
+      paymentTypeFromColumn = true;
     } else {
       const codeMatch = detailText.match(PAYMENT_TYPE_RE);
       if (codeMatch) {
@@ -723,10 +804,12 @@ function parseDataLines(
       }
     }
 
+    const startsNewTxn = hasDate || (!!paymentType && !paymentTypeFromColumn);
+
     const lineY = line[0]?.top ?? 0;
     const lineHasAmounts = !!(paidOutVal || paidInVal || balanceVal);
 
-    if (hasDate || paymentType) {
+    if (startsNewTxn) {
       if (!detailText && !paidOutVal && !paidInVal && !balanceVal && !state.pendingDesc) {
         return;
       }
@@ -803,6 +886,13 @@ function parseDataLines(
             ? `${state.current.details} ${detailText}`
             : detailText;
       }
+      // A column-derived type on a wrap line is the tail of a multi-word
+      // type label (Starling "SUBSCRIPTION" / "CHARGE"); glue it on.
+      if (paymentType && paymentTypeFromColumn) {
+        state.current.paymentType = state.current.paymentType
+          ? `${state.current.paymentType} ${paymentType}`
+          : paymentType;
+      }
       if (paidOutVal) state.current.paidOut = paidOutVal;
       if (paidInVal) state.current.paidIn = paidInVal;
       if (balanceVal) state.current.balance = balanceVal;
@@ -858,7 +948,7 @@ function toIsoDate(date: string): string {
 
 function parseAmount(value: string): number {
   if (!value) return 0;
-  return parseFloat(value.replace(/,/g, ""));
+  return parseFloat(value.replace(/[£,]/g, ""));
 }
 
 function stableId(
