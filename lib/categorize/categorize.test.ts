@@ -69,6 +69,24 @@ describe("categorize — unit tests", () => {
     ["LOT AIRLINEA080D(4 LONDON", "Travel"],
     ["BUTLINS BURGER KIN SKEGNESS", "Dining Out"],
     ["AGEAS INTERNET", "Insurance"],
+    // NatWest-style details (card tail + compact date + optional "C " marker)
+    ["9637 13DEC23 C TESCO STORES 4357 STOURBRIDGE GB", "Groceries"],
+    ["9637 12DEC23 C ALDI 72 772 STOURBRIDGE GB", "Groceries"],
+    ["9637 21DEC23 C ICELAND STOURBRIDGE GB", "Groceries"],
+    ["9637 06JAN24 C HOME BARGAINS STOURBRI STOURBRIDGE GB", "Shopping"],
+    ["9637 11JAN24 C POUNDBAZAAR PLUS STOURBRIDGE GB", "Shopping"],
+    ["9637 15DEC23 C SAVERS HEALTH & BEAUTY STOURBRIDGE GB", "Shopping"],
+    ["9637 05JAN24 PAYPAL *EBAY UK 35314369001 GB", "Shopping"],
+    ["9637 16DEC23 C ROADHOUSE FAST FOOD WEST MIDLANDS GB", "Dining Out"],
+    ["9637 24DEC23 C CAKEBOX STOURBRIDGE STOURBRIDGE D GB", "Dining Out"],
+    ["9637 15DEC23 C SHARMA GARAGES STOURBRIDGE GB", "Car"],
+    ["DVLA-EJ61UYE", "Car"],
+    ["O2 ", "Utilities"],
+    ["VODAFONE LTD", "Utilities"],
+    ["TALKTALK TELECOM T", "Utilities"],
+    ["TV LICENCE QBP1", "Utilities"],
+    ["NHSBSA PPC", "Health & Fitness"],
+    ["FIRSTCENTRALSERV", "Insurance"],
   ])("%s → %s", (details, expected) => {
     const result = categorize(mockTx(details));
     expect(result.category).toBe(expected);
@@ -117,6 +135,16 @@ describe("extractMerchantToken", () => {
     expect(
       extractMerchantToken("INT'L 0026317893 LinkedIn P83441678"),
     ).toBe("LinkedIn P83441678");
+  });
+  test("strips NatWest card-transaction prefix (card tail + date + C)", () => {
+    expect(
+      extractMerchantToken("9637 13DEC23 C TESCO STORES 4357 STOURBRIDGE GB"),
+    ).toBe("TESCO STORES");
+  });
+  test("strips NatWest card prefix when the 'C' marker is absent", () => {
+    expect(
+      extractMerchantToken("9637 19DEC23 PAYPAL *EBAY UK 35314369001 GB"),
+    ).toBe("PAYPAL *EBAY");
   });
 });
 

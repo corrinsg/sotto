@@ -6,7 +6,14 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "WAITROSE", category: "Groceries" },
   { match: "SAINSBURYS", category: "Groceries" },
   { match: "TESCO STORES", category: "Groceries", priority: 1 },
+  { match: "TESCO EXPRESS", category: "Groceries", priority: 1 },
   { match: "ALDI", category: "Groceries" },
+  { match: "LIDL", category: "Groceries" },
+  { match: "MORRISONS", category: "Groceries" },
+  { match: "ICELAND", category: "Groceries" },
+  { match: "CO-OP", category: "Groceries" },
+  { match: "CO OP", category: "Groceries" },
+  { match: "COOPERATIVE FOOD", category: "Groceries" },
   { match: "MARKS & SPENCER", category: "Groceries" },
   { match: "MARKS&SPENCER", category: "Groceries" },
   { match: "NAZAR FOOD", category: "Groceries" },
@@ -57,6 +64,11 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "JUSTEAT", category: "Dining Out" },
   { match: "UBER EATS", category: "Dining Out" },
   { match: "UBEREATS", category: "Dining Out" },
+
+  // Dining Out — UK chains / common names
+  { match: "CAKEBOX", category: "Dining Out" },
+  { match: "ROADHOUSE", category: "Dining Out" },
+  { match: "HEATHCOTE", category: "Dining Out" },
 
   // Dining Out — specific merchants from sample data
   { match: "RED THAI", category: "Dining Out" },
@@ -120,6 +132,12 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "HALFORDS", category: "Car" },
   { match: "KWIK FIT", category: "Car" },
   { match: "KWIK-FIT", category: "Car" },
+  { match: "DVLA", category: "Car" },
+  { match: "GARAGES", category: "Car", appliesTo: "debit" },
+  { match: "GARAGE", category: "Car", appliesTo: "debit" },
+  { match: "MECHANIC", category: "Car", appliesTo: "debit" },
+  { match: "AUTOCENTRE", category: "Car" },
+  { match: "AUTO CENTRE", category: "Car" },
 
   // Utilities
   { match: "OCTOPUS", category: "Utilities" },
@@ -128,6 +146,29 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "1PMOBILE", category: "Utilities" },
   { match: "LB OF BARNET", category: "Utilities" },
   { match: "WOODLAND TRUST", category: "Utilities" },
+  { match: "BRITISH GAS", category: "Utilities" },
+  { match: "EDF ENERGY", category: "Utilities" },
+  { match: "E.ON", category: "Utilities" },
+  { match: "EON ENERGY", category: "Utilities" },
+  { match: "SCOTTISH POWER", category: "Utilities" },
+  { match: "OVO ENERGY", category: "Utilities" },
+  { match: "BULB ENERGY", category: "Utilities" },
+  { match: "THAMES WATER", category: "Utilities" },
+  { match: "SEVERN TRENT", category: "Utilities" },
+  { match: "ANGLIAN WATER", category: "Utilities" },
+  { match: "YORKSHIRE WATER", category: "Utilities" },
+  // Phone / broadband
+  { match: "O2 ", category: "Utilities" },
+  { match: "VODAFONE", category: "Utilities" },
+  { match: "EE LIMITED", category: "Utilities" },
+  { match: "EE LTD", category: "Utilities" },
+  { match: "THREE MOBILE", category: "Utilities" },
+  { match: "TALKTALK", category: "Utilities" },
+  { match: "BT GROUP", category: "Utilities" },
+  { match: "VIRGIN MEDIA", category: "Utilities" },
+  { match: "PLUSNET", category: "Utilities" },
+  { match: "GIFFGAFF", category: "Utilities" },
+  { match: "TV LICEN", category: "Utilities" },
 
   // Insurance
   { match: "AGEAS", category: "Insurance" },
@@ -135,10 +176,13 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "ADMIRAL", category: "Insurance" },
   { match: "DIRECT LINE", category: "Insurance" },
   { match: "LV=", category: "Insurance" },
+  { match: "LV LIFE", category: "Insurance" },
   { match: "HASTINGS DIRECT", category: "Insurance" },
   { match: "MORE THAN", category: "Insurance" },
   { match: "CHURCHILL", category: "Insurance" },
   { match: "PINNACLE INS", category: "Insurance" },
+  { match: "FIRSTCENTRAL", category: "Insurance" },
+  { match: "FIRST CENTRAL", category: "Insurance" },
 
   // Cash withdrawals — matched on HSBC's ATM payment type code
   { match: "", paymentType: "ATM", category: "Cash", priority: 10 },
@@ -167,6 +211,19 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "BOOTS", category: "Shopping" },
   { match: "CANCER RESEARCH", category: "Shopping" },
   { match: "IHERB", category: "Shopping" },
+  { match: "HOME BARGAINS", category: "Shopping" },
+  { match: "POUNDBAZAAR", category: "Shopping" },
+  { match: "POUND BAZAAR", category: "Shopping" },
+  { match: "POUNDLAND", category: "Shopping" },
+  { match: "POUNDSTRETCHER", category: "Shopping" },
+  { match: "SAVERS HEALTH", category: "Shopping" },
+  { match: "WILKO", category: "Shopping" },
+  { match: "ARGOS", category: "Shopping" },
+  { match: "JOHN LEWIS", category: "Shopping" },
+  { match: "IKEA", category: "Shopping" },
+  { match: "PAYPAL *EBAY", category: "Shopping" },
+  { match: "EBAY UK", category: "Shopping" },
+  { match: "EBAY.CO", category: "Shopping" },
 
   // Entertainment
   { match: "SOHO THEATRE", category: "Entertainment" },
@@ -189,6 +246,8 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "BUPA", category: "Health & Fitness", appliesTo: "credit" },
   { match: "PURE GYM", category: "Health & Fitness" },
   { match: "PUREGYM", category: "Health & Fitness" },
+  { match: "NHSBSA", category: "Health & Fitness" },
+  { match: "NHS PRESCRIPTION", category: "Health & Fitness" },
   // Keyword fallbacks for pharmacies — higher priority so they beat
   // retail rules like BOOTS when the merchant name includes "pharmacy".
   { match: "PHARMACY", category: "Health & Fitness", appliesTo: "debit", priority: 2 },
@@ -210,6 +269,15 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "ENGLISH HERITAGE", category: "Travel" },
   { match: "HERTFORDSHIREZOO", category: "Travel" },
   { match: "HERTFORDSHIRE ZOO", category: "Travel" },
+
+  // Subscriptions — streaming, memberships, TV licence lives under Utilities
+  { match: "SPOTIFY", category: "Subscriptions" },
+  { match: "DISNEY+", category: "Subscriptions" },
+  { match: "DISNEY PLUS", category: "Subscriptions" },
+  { match: "AMAZON PRIME", category: "Subscriptions" },
+  { match: "NOW TV", category: "Subscriptions" },
+  { match: "SKY DIGITAL", category: "Subscriptions" },
+  { match: "AUDIBLE", category: "Subscriptions" },
 
   // Income
   { match: "CHAINLINK LABS", category: "Income", appliesTo: "credit" },

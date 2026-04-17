@@ -49,6 +49,12 @@ export function extractMerchantToken(details: string): string {
   const cleaned = details
     .replace(/^(VIS|BP|CR|DD|CHQ|SO|TFR|\)\)\)|FPI|FPO|BGC|ATM)\s+/i, "")
     .replace(/^INT'L\s+\d+\s+/, "")
+    // NatWest card-transaction prefix: a 4+ digit card tail, then a compact
+    // date like "13DEC23", then an optional "C " (contactless) marker.
+    // Stripping it exposes the real merchant name as the first token so a
+    // user's "apply to all matching" rule keys on the merchant, not the
+    // card/date combo that's unique to that single row.
+    .replace(/^\d{4,}\s+\d{1,2}[A-Z]{3}\d{2,4}\s+C?\s*/i, "")
     .trim();
   const tokens = cleaned.split(/\s+/).slice(0, 2);
   return tokens.join(" ");
