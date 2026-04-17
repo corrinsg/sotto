@@ -28,12 +28,12 @@
     "@types/pdfkit": "^0.17.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitest/ui": "^2.1.9",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
     "pdfkit": "^0.18.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^2.1.9"
+    "vitest": "^3.2.4"
   }
 }
