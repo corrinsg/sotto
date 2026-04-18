@@ -165,8 +165,10 @@ function parseFlexibleDate(
   const attempts = firstToken === full ? [full] : [full, firstToken];
 
   for (const s of attempts) {
+    // Named-month dates: "23 Feb 26", "23-Feb-26", "23/Feb/26",
+    // "23.Feb.2026" — any of space/hyphen/slash/dot as the separator.
     const mNamed =
-      /^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})$/i.exec(
+      /^(\d{1,2})[\s\-\/.]+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\-\/.]+(\d{2,4})$/i.exec(
         s,
       );
     if (mNamed) {

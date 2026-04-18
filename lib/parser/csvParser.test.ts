@@ -96,6 +96,18 @@ describe("parseCsvStatement", () => {
     expect(transactions[1].amount).toBeCloseTo(15574.81, 2);
   });
 
+  test("accepts named-month dates with hyphens, slashes or dots as separators", async () => {
+    const csv = `Date,Description,Amount
+23-Feb-26,ASDA,-6.95
+24/Feb/2026,TESCO,-12.00
+25.Feb.26,ITSU,-13.44`;
+    const { transactions } = await parseCsvStatement(csv);
+    expect(transactions).toHaveLength(3);
+    expect(transactions[0].isoDate).toBe("2026-02-23");
+    expect(transactions[1].isoDate).toBe("2026-02-24");
+    expect(transactions[2].isoDate).toBe("2026-02-25");
+  });
+
   test("handles currency symbols and parenthesized negatives", async () => {
     const { transactions } = await parseCsvStatement(CURRENCY_SYMBOLS_CSV);
     expect(transactions).toHaveLength(3);
