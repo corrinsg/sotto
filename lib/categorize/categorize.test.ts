@@ -90,7 +90,6 @@ describe("categorize — unit tests", () => {
     ["POSTOFFICE MONEY", "Cash"],
     // Word-boundaried cash/rent fallbacks
     ["Natco Cash", "Cash"],
-    ["Post Office Banking Services (Cash Deposit)", "Cash"],
     ["Shaheen Properties Ltd (Unit 10 Rent)", "Rent/Mortgage"],
     ["HSBC MORTGAGE PAYMENT", "Rent/Mortgage"],
   ])("%s → %s", (details, expected) => {
@@ -119,6 +118,16 @@ describe("categorize — unit tests", () => {
     expect(categorize(mockTx("EUROPCAR RENTAL")).category).not.toBe("Rent/Mortgage");
     expect(categorize(mockTx("CURRENT ACCOUNT")).category).not.toBe("Rent/Mortgage");
     expect(categorize(mockTx("PARENT PAY")).category).not.toBe("Rent/Mortgage");
+  });
+
+  test("cash-word rule applies to debits only — deposits (credits) stay uncategorised", () => {
+    const deposit = mockTx(
+      "Post Office Banking Services (Cash Deposit)",
+      "credit",
+    );
+    expect(categorize(deposit).category).toBe(null);
+    const withdrawal = mockTx("Natco Cash", "debit");
+    expect(categorize(withdrawal).category).toBe("Cash");
   });
 
   test("unknown merchant returns null", () => {

@@ -188,10 +188,16 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "", paymentType: "ATM", category: "Cash", priority: 10 },
   { match: "POSTOFFICE MONEY", category: "Cash" },
   { match: "POST OFFICE MONEY", category: "Cash" },
-  // Generic "cash" word fallback (word-boundaried so "cashback"/
-  // "cashier" don't trigger). Covers merchant-level cash-withdrawal or
-  // cash-deposit rows that don't carry a bank-specific type code.
-  { match: "CASH", pattern: /\bcash\b/i, category: "Cash" },
+  // Generic "cash" word fallback for outgoing money (word-boundaried
+  // so "cashback"/"cashier" don't trigger). Applies to debits only —
+  // a "Cash Deposit" credit is money coming IN, not an expense, so
+  // we leave those uncategorised rather than inflate the Cash bucket.
+  {
+    match: "CASH",
+    pattern: /\bcash\b/i,
+    category: "Cash",
+    appliesTo: "debit",
+  },
 
   // Rent / mortgage — word-boundaried so "current", "parent", "rental"
   // don't accidentally match.
