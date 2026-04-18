@@ -145,6 +145,17 @@ describe("categorize — unit tests", () => {
     ).toBe("Income");
     expect(categorize(mockTx("Chainlink Labs", "debit")).category).toBe(null);
   });
+
+  test("salary/payroll/wages credit rules recognise incoming pay, leave outgoing 'salary' transfers alone", () => {
+    expect(categorize(mockTx("ACME LTD PAYROLL", "credit")).category).toBe("Income");
+    expect(categorize(mockTx("ACME LTD SALARY", "credit")).category).toBe("Income");
+    expect(categorize(mockTx("ACME LTD WAGES", "credit")).category).toBe("Income");
+    // Outgoing "salary" Faster Payment (e.g. paying an employee) must
+    // not be miscategorised as income.
+    expect(
+      categorize(mockTx("Talha Arshad (Part salary)", "debit")).category,
+    ).not.toBe("Income");
+  });
 });
 
 describe("extractMerchantToken", () => {

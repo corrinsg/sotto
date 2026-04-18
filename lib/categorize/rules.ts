@@ -299,4 +299,25 @@ export const STARTER_RULES: MerchantRule[] = [
   // Income
   { match: "CHAINLINK LABS", category: "Income", appliesTo: "credit" },
   { match: "SKIPPR", category: "Income", appliesTo: "credit" },
+  // Generic salary / payroll fallbacks — credit-only so an outgoing
+  // "Talha Arshad (Part salary)" Faster Payment doesn't accidentally
+  // get tagged as incoming income.
+  {
+    match: "SALARY",
+    pattern: /\bsalary\b/i,
+    category: "Income",
+    appliesTo: "credit",
+  },
+  {
+    match: "PAYROLL",
+    pattern: /\bpayroll\b/i,
+    category: "Income",
+    appliesTo: "credit",
+  },
+  {
+    match: "WAGES",
+    pattern: /\bwages\b/i,
+    category: "Income",
+    appliesTo: "credit",
+  },
 ];
