@@ -16,23 +16,23 @@ export default function AppPage() {
   const reset = useAppStore((s) => s.reset);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
-      <header className="flex items-center justify-between">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
+      <header className="flex items-center justify-between gap-3">
         <Link
           href="/"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+          className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
         >
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
           Sotto
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {phase === "parsed" && <AddMoreButton />}
           {phase === "parsed" && <ExportButton />}
           {phase !== "idle" && (
             <button
               type="button"
               onClick={reset}
-              className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-none dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+              className="shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 sm:px-4 sm:py-2 sm:text-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-none dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
             >
               Start over
             </button>
