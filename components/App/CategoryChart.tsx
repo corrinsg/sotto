@@ -92,10 +92,17 @@ function Donut({
   const radius = (size - strokeWidth) / 2;
   const cx = size / 2;
   const cy = size / 2;
-  const circumference = 2 * Math.PI * radius;
   const sliceTotal = slices.reduce((s, x) => s + x.value, 0);
+  const drawableSlices = slices.filter((s) => s.value > 0);
 
-  let offset = 0;
+  // Render each slice as its own SVG arc path so slice boundaries meet
+  // at exactly the same point on both sides. The previous implementation
+  // used full circles with stroke-dasharray tricks which left a visible
+  // seam at the last-slice → first-slice wrap-around (most noticeable
+  // between Uncategorised and Others when one was biggest and the other
+  // last).
+  let accumulated = 0;
+  const fullCircle = drawableSlices.length === 1;
 
   return (
     <svg
@@ -113,24 +120,41 @@ function Donut({
         className="stroke-zinc-100 dark:stroke-zinc-800"
         strokeWidth={strokeWidth}
       />
-      {slices.map((s) => {
-        if (sliceTotal === 0 || s.value === 0) return null;
-        const length = (s.value / sliceTotal) * circumference;
-        const dashArray = `${length} ${circumference - length}`;
-        const thisOffset = offset;
-        offset += length;
+      {drawableSlices.map((s) => {
+        if (sliceTotal === 0) return null;
+        // Single-slice edge case: one slice covering 100% degenerates to
+        // a zero-length arc path, so render as a full circle instead.
+        if (fullCircle) {
+          return (
+            <circle
+              key={s.label}
+              cx={cx}
+              cy={cy}
+              r={radius}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={strokeWidth}
+            />
+          );
+        }
+        const startFrac = accumulated / sliceTotal;
+        const endFrac = (accumulated + s.value) / sliceTotal;
+        accumulated += s.value;
+        const startAngle = 2 * Math.PI * startFrac - Math.PI / 2;
+        const endAngle = 2 * Math.PI * endFrac - Math.PI / 2;
+        const sx = cx + radius * Math.cos(startAngle);
+        const sy = cy + radius * Math.sin(startAngle);
+        const ex = cx + radius * Math.cos(endAngle);
+        const ey = cy + radius * Math.sin(endAngle);
+        const largeArc = endFrac - startFrac > 0.5 ? 1 : 0;
+        const d = `M ${sx} ${sy} A ${radius} ${radius} 0 ${largeArc} 1 ${ex} ${ey}`;
         return (
-          <circle
+          <path
             key={s.label}
-            cx={cx}
-            cy={cy}
-            r={radius}
+            d={d}
             fill="none"
             stroke={s.color}
             strokeWidth={strokeWidth}
-            strokeDasharray={dashArray}
-            strokeDashoffset={-thisOffset}
-            transform={`rotate(-90 ${cx} ${cy})`}
             strokeLinecap="butt"
           />
         );
