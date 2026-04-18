@@ -88,6 +88,11 @@ describe("categorize — unit tests", () => {
     ["NHSBSA PPC", "Health & Fitness"],
     ["FIRSTCENTRALSERV", "Insurance"],
     ["POSTOFFICE MONEY", "Cash"],
+    // Word-boundaried cash/rent fallbacks
+    ["Natco Cash", "Cash"],
+    ["Post Office Banking Services (Cash Deposit)", "Cash"],
+    ["Shaheen Properties Ltd (Unit 10 Rent)", "Rent/Mortgage"],
+    ["HSBC MORTGAGE PAYMENT", "Rent/Mortgage"],
   ])("%s → %s", (details, expected) => {
     const result = categorize(mockTx(details));
     expect(result.category).toBe(expected);
@@ -106,6 +111,14 @@ describe("categorize — unit tests", () => {
   test("non-ATM payment type doesn't trigger Cash", () => {
     const tx = mockTx("SOMERANDOMMERCHANT", "debit", "VIS");
     expect(categorize(tx).category).toBe(null);
+  });
+
+  test("cash/rent word-boundary rules don't false-match on cashback, cashier, rental, current, parent", () => {
+    expect(categorize(mockTx("TESCO CASHBACK")).category).not.toBe("Cash");
+    expect(categorize(mockTx("JOHN THE CASHIER")).category).not.toBe("Cash");
+    expect(categorize(mockTx("EUROPCAR RENTAL")).category).not.toBe("Rent/Mortgage");
+    expect(categorize(mockTx("CURRENT ACCOUNT")).category).not.toBe("Rent/Mortgage");
+    expect(categorize(mockTx("PARENT PAY")).category).not.toBe("Rent/Mortgage");
   });
 
   test("unknown merchant returns null", () => {
