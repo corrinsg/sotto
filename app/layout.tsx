@@ -14,9 +14,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for og:image URLs so scrapers on iMessage / Slack /
+  // WhatsApp / Telegram / X get a full URL they can actually fetch.
+  metadataBase: new URL("https://usesotto.vercel.app"),
   title: "Sotto — Private spend analyser",
   description:
     "Analyse your spending without uploading anything. Your statement never leaves your browser.",
+  openGraph: {
+    title: "Sotto — Private spend analyser",
+    description:
+      "Analyse your spending without uploading anything. Your statement never leaves your browser.",
+    url: "https://usesotto.vercel.app",
+    siteName: "Sotto",
+    type: "website",
+    locale: "en_GB",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sotto — Private spend analyser",
+    description:
+      "Analyse your spending without uploading anything. Your statement never leaves your browser.",
+  },
 };
 
 export default async function RootLayout({
