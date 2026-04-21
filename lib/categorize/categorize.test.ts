@@ -8,7 +8,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import { parseStatementPdf } from "../parser/pdfParser";
 import type { Transaction } from "../parser/types";
 import { categorize, extractMerchantToken } from "./categorize";
-import type { Category } from "./types";
+import { CATEGORIES, CATEGORY_GROUPS, type Category } from "./types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(
@@ -144,6 +144,23 @@ describe("categorize — unit tests", () => {
       categorize(mockTx("Chainlink Labs", "credit")).category,
     ).toBe("Income");
     expect(categorize(mockTx("Chainlink Labs", "debit")).category).toBe(null);
+  });
+
+  test("every Category appears in exactly one CATEGORY_GROUP (picker can't silently lose options)", () => {
+    const seen = new Map<Category, string>();
+    for (const group of CATEGORY_GROUPS) {
+      for (const c of group.categories) {
+        const prev = seen.get(c);
+        if (prev) {
+          throw new Error(
+            `Category "${c}" appears in both "${prev}" and "${group.label}"`,
+          );
+        }
+        seen.set(c, group.label);
+      }
+    }
+    const missing = CATEGORIES.filter((c) => !seen.has(c));
+    expect(missing).toEqual([]);
   });
 
   test("salary/payroll/wages credit rules recognise incoming pay, leave outgoing 'salary' transfers alone", () => {

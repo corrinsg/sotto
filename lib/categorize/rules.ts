@@ -184,6 +184,53 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "FIRSTCENTRAL", category: "Insurance" },
   { match: "FIRST CENTRAL", category: "Insurance" },
 
+  // Investments & Savings — UK brokers, robo-advisors, savings apps.
+  { match: "VANGUARD", category: "Investments & Savings" },
+  { match: "HARGREAVES LANSDOWN", category: "Investments & Savings" },
+  { match: "FREETRADE", category: "Investments & Savings" },
+  { match: "TRADING 212", category: "Investments & Savings" },
+  { match: "TRADING212", category: "Investments & Savings" },
+  { match: "NUTMEG", category: "Investments & Savings" },
+  { match: "MONEYBOX", category: "Investments & Savings" },
+  { match: "MONEYFARM", category: "Investments & Savings" },
+  { match: "AJ BELL", category: "Investments & Savings" },
+  { match: "INTERACTIVE INVESTOR", category: "Investments & Savings" },
+  { match: "PLUM SAVING", category: "Investments & Savings" },
+  { match: "CHIP SAVING", category: "Investments & Savings" },
+  { match: "COINBASE", category: "Investments & Savings" },
+  { match: "KRAKEN", category: "Investments & Savings" },
+  { match: "BINANCE", category: "Investments & Savings" },
+
+  // Personal Care — salons, barbers, spas; word-boundaried so
+  // "saloon-themed bar" type descriptions don't false-match.
+  { match: "HAIRDRESSER", pattern: /\bhairdresser/i, category: "Personal Care" },
+  { match: "BARBER", pattern: /\bbarber/i, category: "Personal Care" },
+  { match: "SALON", pattern: /\bsalon\b/i, category: "Personal Care" },
+  { match: "NAILS", pattern: /\bnails?\b/i, category: "Personal Care" },
+  { match: "SPA", pattern: /\bspa\b/i, category: "Personal Care" },
+  { match: "TONI & GUY", category: "Personal Care" },
+  { match: "TONI&GUY", category: "Personal Care" },
+  { match: "SUPERCUTS", category: "Personal Care" },
+  { match: "LUSH", category: "Personal Care" },
+  { match: "THE BODY SHOP", category: "Personal Care" },
+  { match: "SPACE NK", category: "Personal Care" },
+
+  // Charity — donations & membership-style giving.
+  { match: "JUSTGIVING", category: "Charity" },
+  { match: "JUST GIVING", category: "Charity" },
+  { match: "GOFUNDME", category: "Charity" },
+  { match: "BRITISH RED CROSS", category: "Charity" },
+  { match: "CANCER RESEARCH", category: "Charity" },
+  { match: "MACMILLAN", category: "Charity" },
+  { match: "OXFAM", category: "Charity" },
+  { match: "SHELTER", category: "Charity" },
+  { match: "RSPCA", category: "Charity" },
+  { match: "AMNESTY", category: "Charity" },
+  { match: "UNICEF", category: "Charity" },
+  { match: "SAVE THE CHILDREN", category: "Charity" },
+  { match: "BRITISH HEART FOUNDATION", category: "Charity" },
+  { match: "DONATE", pattern: /\bdonation\b|\bdonate\b/i, category: "Charity", appliesTo: "debit" },
+
   // Cash withdrawals — matched on HSBC's ATM payment type code
   { match: "", paymentType: "ATM", category: "Cash", priority: 10 },
   { match: "POSTOFFICE MONEY", category: "Cash" },
@@ -226,7 +273,8 @@ export const STARTER_RULES: MerchantRule[] = [
   { match: "ALIEXPRESS", category: "Shopping" },
   { match: "WORLDOFBOOKS", category: "Shopping" },
   { match: "BOOTS", category: "Shopping" },
-  { match: "CANCER RESEARCH", category: "Shopping" },
+  // CANCER RESEARCH previously mapped to Shopping; it's now in the
+  // Charity section above.
   { match: "IHERB", category: "Shopping" },
   { match: "HOME BARGAINS", category: "Shopping" },
   { match: "POUNDBAZAAR", category: "Shopping" },

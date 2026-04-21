@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useAppStore, computeUncategorized } from "@/lib/state/appStore";
-import { CATEGORIES, type Category } from "@/lib/categorize/types";
+import { CATEGORY_GROUPS, type Category } from "@/lib/categorize/types";
 import { extractMerchantToken } from "@/lib/categorize/categorize";
 
 function formatGBP(amount: number): string {
@@ -145,10 +145,14 @@ export function UncategorizedPanel() {
                   <option value="" disabled>
                     Assign category…
                   </option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                  {CATEGORY_GROUPS.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
                 {merchantToken && (
