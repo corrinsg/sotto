@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3010",
+    "prebuild": "node scripts/fetch-github-stars.mjs",
     "build": "next build",
     "start": "next start -p 3010",
     "lint": "eslint",
