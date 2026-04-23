@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StarButton } from "@/components/Layout/StarButton";
 
 const STEPS = [
   {
@@ -22,6 +23,17 @@ export default function Home() {
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.15),transparent)]"
         aria-hidden
       />
+
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-6 sm:px-6">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100"
+        >
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          Sotto
+        </Link>
+        <StarButton />
+      </header>
 
       <section className="mx-auto w-full max-w-4xl px-6 pb-16 pt-24 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">

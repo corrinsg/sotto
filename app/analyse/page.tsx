@@ -10,6 +10,7 @@ import { UncategorizedPanel } from "@/components/App/UncategorizedPanel";
 import { ExportButton } from "@/components/App/ExportButton";
 import { AddMoreButton } from "@/components/App/AddMoreButton";
 import { ErrorBanner } from "@/components/App/ErrorBanner";
+import { StarButton } from "@/components/Layout/StarButton";
 
 export default function AppPage() {
   const phase = useAppStore((s) => s.phase);
@@ -37,6 +38,7 @@ export default function AppPage() {
               Start over
             </button>
           )}
+          <StarButton />
         </div>
       </header>
 

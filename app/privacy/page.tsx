@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StarButton } from "@/components/Layout/StarButton";
 
 const PROMISES = [
   {
@@ -26,25 +27,28 @@ const PROMISES = [
 export default function PrivacyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-sm text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="h-4 w-4"
-          aria-hidden
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
         >
-          <path
-            fillRule="evenodd"
-            d="M17 10a.75.75 0 0 1-.75.75H5.56l3.97 3.97a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 1 1 1.06 1.06L5.56 9.25h10.69A.75.75 0 0 1 17 10Z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Back
-      </Link>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M17 10a.75.75 0 0 1-.75.75H5.56l3.97 3.97a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 1 1 1.06 1.06L5.56 9.25h10.69A.75.75 0 0 1 17 10Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Back
+        </Link>
+        <StarButton />
+      </div>
       <h1 className="mt-6 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-5xl">
         Verify it yourself.
       </h1>
