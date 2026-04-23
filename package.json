@@ -31,7 +31,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/ui": "^3.2.4",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.2.3",
     "pdfkit": "^0.18.0",
     "tailwindcss": "^4",
