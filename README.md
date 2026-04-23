@@ -22,7 +22,7 @@ These aren't just claims — they're enforced by code and verifiable by anyone:
 - **No server upload.** The file input reads into an `ArrayBuffer` via `file.arrayBuffer()`. There is no `<form>` POST, no API route, no `fetch()` on the parsing path.
 - **Strict Content-Security-Policy.** Every response carries `connect-src 'self'`, which tells the browser to block any outbound network request to a third party. Even a bug couldn't exfiltrate data.
 - **Per-request nonce.** Inline scripts use `'nonce-<random>'` + `'strict-dynamic'` instead of `'unsafe-inline'`, tightening the CSP against XSS.
-- **Zero analytics.** No Google Analytics, no Sentry, no Vercel Analytics, no telemetry of any kind.
+- **Zero tracking on the parsing flow.** The landing page (`/`) counts anonymous visits via Vercel Analytics — one beacon, no cookies, no IP stored. `/analyse` and `/privacy` load no analytics and no third-party scripts. No Google Analytics, Sentry, or session replay anywhere.
 - **Self-hosted pdf.js worker.** The Web Worker that parses PDFs is served from the same origin (`/pdfjs/pdf.worker.min.mjs`), not fetched from a CDN.
 - **Auditable.** The [`/privacy`](https://usesotto.vercel.app/privacy) page walks you through verifying every claim in under a minute using DevTools.
 

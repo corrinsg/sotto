@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 import { StarButton } from "@/components/Layout/StarButton";
 
 const STEPS = [
@@ -19,6 +20,14 @@ const STEPS = [
 export default function Home() {
   return (
     <main className="flex-1">
+      {/*
+        Analytics is scoped to the home page only. It fires one page-view
+        beacon when "/" mounts, unmounts cleanly on navigation, and never
+        loads on /analyse or /privacy — so the statement-parsing flow stays
+        genuinely zero-network (the privacy page says so; this placement
+        keeps that honest).
+      */}
+      <Analytics />
       <div
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.07),transparent)] dark:bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(16,185,129,0.15),transparent)]"
         aria-hidden

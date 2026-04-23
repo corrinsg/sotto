@@ -11,8 +11,8 @@ const PROMISES = [
     body: "The pages ship as static HTML plus a JavaScript bundle. The server only serves files — it never sees a transaction.",
   },
   {
-    title: "No third-party scripts",
-    body: "Zero analytics. No Google Analytics, Sentry, Vercel Analytics, or any other tracking. Fonts are self-hosted.",
+    title: "No tracking on the parsing flow",
+    body: "The landing page counts anonymous visits via Vercel Analytics — one beacon, no cookies, no IP stored, just so we know if anyone's reading this. That page is the only place with any telemetry. /analyse and /privacy load zero analytics and zero third-party scripts. No Google Analytics, no Sentry, no session replay, anywhere. Fonts are self-hosted.",
   },
   {
     title: "No localStorage",
