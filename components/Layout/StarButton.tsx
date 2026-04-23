@@ -29,24 +29,6 @@ function GitHubMark() {
   );
 }
 
-function StarIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      className="h-4 w-4 sm:h-[18px] sm:w-[18px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 2.5l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.7l7.1-.6L12 2.5Z" />
-    </svg>
-  );
-}
-
 export function StarButton() {
   return (
     <a
@@ -57,7 +39,6 @@ export function StarButton() {
       className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-zinc-700 transition-opacity hover:opacity-75 sm:text-[15px] dark:text-zinc-200"
     >
       <GitHubMark />
-      <StarIcon />
       <span className="tabular-nums">{formatStarCount(GITHUB_STAR_COUNT)}</span>
     </a>
   );
