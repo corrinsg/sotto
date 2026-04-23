@@ -1,7 +1,8 @@
-// "Star on GitHub" link — Neon-style: GitHub mark + star + count, all
-// monochrome in the current text color. Count is generated at build
-// time by scripts/fetch-github-stars.mjs (see the `prebuild` npm
-// script) so nothing hits the network at runtime and the strict
+// "Star on GitHub" link — Neon-style: GitHub mark + count, monochrome
+// in the current text color. Count is hidden below 21 stars so we
+// don't advertise a low number during early launch. Count is generated
+// at build time by scripts/fetch-github-stars.mjs (see the `prebuild`
+// npm script) so nothing hits the network at runtime and the strict
 // `connect-src 'self'` CSP stays intact.
 
 import { GITHUB_STAR_COUNT } from "@/lib/generated/github-stars";
@@ -30,16 +31,23 @@ function GitHubMark() {
 }
 
 export function StarButton() {
+  const showCount = GITHUB_STAR_COUNT > 20;
   return (
     <a
       href={REPO_URL}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`Sotto on GitHub — ${GITHUB_STAR_COUNT} stars`}
+      aria-label={
+        showCount
+          ? `Sotto on GitHub — ${GITHUB_STAR_COUNT} stars`
+          : "Sotto on GitHub"
+      }
       className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-zinc-700 transition-opacity hover:opacity-75 sm:text-[15px] dark:text-zinc-200"
     >
       <GitHubMark />
-      <span className="tabular-nums">{formatStarCount(GITHUB_STAR_COUNT)}</span>
+      {showCount && (
+        <span className="tabular-nums">{formatStarCount(GITHUB_STAR_COUNT)}</span>
+      )}
     </a>
   );
 }
