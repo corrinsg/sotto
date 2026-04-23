@@ -24,7 +24,7 @@ function StarWithGitHubMark() {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
-      className="h-4 w-4 sm:h-[18px] sm:w-[18px]"
+      className="h-6 w-6 sm:h-7 sm:w-7"
       aria-hidden
     >
       <path
@@ -48,7 +48,7 @@ export function StarButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Sotto on GitHub — ${GITHUB_STAR_COUNT} stars`}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 sm:gap-2 sm:px-3.5 sm:py-2 sm:text-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-none dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
+      className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-zinc-700 transition-opacity hover:opacity-75 sm:text-base dark:text-zinc-200"
     >
       <StarWithGitHubMark />
       <span className="tabular-nums">{formatStarCount(GITHUB_STAR_COUNT)}</span>
